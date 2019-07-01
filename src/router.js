@@ -1,6 +1,8 @@
 import Vue from 'vue'
 import Router from 'vue-router'
-import Home from './views/Home.vue'
+import pipeline_input from './components/pipeline_input.vue'
+import pipeline_mgmt from './components/pipeline_mgmt.vue'
+import show_pipeline from './components/show_pipeline.vue'
 
 Vue.use(Router)
 
@@ -10,16 +12,18 @@ export default new Router({
   routes: [
     {
       path: '/',
-      name: 'home',
-      component: Home
+      name: 'pipeline_input',
+      component: pipeline_input
     },
     {
-      path: '/about',
-      name: 'about',
-      // route level code-splitting
-      // this generates a separate chunk (about.[hash].js) for this route
-      // which is lazy-loaded when the route is visited.
-      component: () => import(/* webpackChunkName: "about" */ './views/About.vue')
+      path: '/pipeline_mgmt',
+      name: 'pipeline_mgmt',
+      component: pipeline_mgmt
+    },
+    {
+      path: '/show_pipeline',
+      name: 'show_pipeline',
+      component: show_pipeline
     }
   ]
 })
