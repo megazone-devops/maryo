@@ -1,30 +1,17 @@
 <template>
 	<div>
     <!-- 박스 그려주는 부분 -->
-		<!-- <div v-for="(item,index) in pipeline_jobs" style="float:left;">
-			<div v-if="item.overlap=='first'">
-				<div style="width:140px;height:50px">
-					<div v-if="index!=0" style="width:20px;height:0px;float:left;margin: 6px;margin-top: 20px; cursor:pointer;border:3px solid green" :style="item.plan[0].aggregate[item.triggerIndex].trigger? 'border:3px solid green;':'border:3px solid red;'" @click="triggerChange(index,item.triggerIndex)">
-					</div>
-					<div style="width:100px;height:50px;border:1px solid black;float:left;text-align:center" :style="checkBox[index]==true? 'background-color:green':''" @click="boxCheck(index)">
-					<br>{{item.name}}
-					</div>
-					<div v-if="index!=0" style="width:20px;height:0px;float:left;margin: 6px;margin-top: 20px; cursor:pointer;border:3px solid green" :style="pipeline_jobs[index+1].plan[0].aggregate[item.triggerIndex].trigger? 'border:3px solid green;':'border:3px solid red;'" @click="triggerChange(index+1,pipeline_jobs[index+1].triggerIndex)">
-					</div>
-					<div style="width:100px;height:50px;border:1px solid black;float:left;text-align:center" :style="checkBox[index+1]==true? 'background-color:green':''" @click="boxCheck(index+1)">
-						<br>{{pipeline_jobs[index+1].name}}
-					</div>
-				</div>
-				</div>
-			<div v-else-if="item.overlap!='second'">
-				<div v-if="index!=0" style="width:20px;height:0px;float:left;margin: 6px;margin-top: 41px; cursor:pointer;border:3px solid green" :style="item.plan[0].aggregate[item.triggerIndex].trigger? 'border:3px solid green;':'border:3px solid red;'" @click="triggerChange(index,item.triggerIndex)">
-				</div>
-				<div style="width:100px;height:100px;border:1px solid black;float:left;text-align:center" :style="checkBox[index]==true? 'background-color:green':''" @click="boxCheck(index)">
-					<br>{{item.name}}
-				</div>
-			</div>
-
-		</div> -->
+		<!-- resource 부분 -->
+		<h1>
+			RESOURCES
+		</h1>
+		<h2 style="inline-block">
+			<b-badge variant="success" v-for="(item, index) in pipeline_resources" :item="item" style="margin-right:15px; float:left; margin-bottom:8px;" @click="resource_info(index)">{{item.name}}</b-badge>
+		</h2>
+		<!-- pipeline 부분 -->
+		<h1 style="padding-top: 9px;margin: 40px 0 20px; border-top: 1px solid #eee;display: inline-block; width: 100%;"> 
+			PIPE LINE
+		</h1>
 		<div v-for="(item,index) in pipeline_jobs" style="float:left;">
 			<div v-if="item.overlap=='first'">
 				<div style="width:140px;height:50px">
@@ -53,13 +40,52 @@
 			<br><br>+
 		</div>
 
-    <!-- 버튼부분 -->
-	  <button type="button" class="btn btn-primary" @click="allCheck" style="float:right;">All Check</button>
-	  <button type="button" class="btn btn-primary" @click="name_dialog=true" style="float:right;">Save Job</button>
-      <!-- 다이얼로그 -->
+		<!-- 버튼부분 -->
+		<button type="button" class="btn btn-primary" @click="allCheck" style="float:right;">All Check</button>
+		<button type="button" class="btn btn-primary" @click="name_dialog=true" style="float:right;">Save Job</button>
+		<!-- 저장 다이얼로그 -->
 		<b-modal v-model="name_dialog" @ok="saveCheck" title="Pipeline 명을 입력해주세요">
 			<b-form-input v-model="pipeline_name" placeholder="Enter job name"></b-form-input>
 		</b-modal>
+		<!-- 저장 다이얼로그 끝 -->
+		<!-- job info 다이얼로그 -->
+		<b-modal v-model="pipeline_info_dialog" :title="pipeline_jobs[now_pipeline_index].name">
+			<h2>Aggregate</h2>
+			<h3>
+				<b-badge variant="success" v-for="item in pipeline_jobs[now_pipeline_index].plan[0].aggregate" :key="item.get" style="margin-right:15px;">{{item.get}}</b-badge>
+			</h3>
+			<div v-if="pipeline_jobs[now_pipeline_index].plan.length>1">
+			<h2>Run</h2>
+			    <b-form-textarea
+				id="textarea"
+				v-model="pipeline_jobs[now_pipeline_index].plan[1].config.run.args"
+				rows="7"
+				disabled
+				></b-form-textarea>
+			</div>
+			<h2>Resources</h2>
+			<h3 v-for="(item, index) in pipeline_jobs[now_pipeline_index].plan" :key="item.get">
+				<b-badge v-if="index!=0 && index!=1" variant="success"  style="margin-right:15px;">{{item.put}}</b-badge>
+			</h3>
+			
+		</b-modal>
+		<!-- job info 다이얼로그 끝 -->
+
+		<!-- resource info 다이얼로그 -->
+		<b-modal v-model="resource_info_dialog" title="Resource">
+			<div v-for="item in Object.keys(pipeline_resources[now_resource_index])">
+				<div v-if="typeof(pipeline_resources[now_resource_index][item])!='object'">
+					<h3>{{item}} :</h3><b-form-input :value="pipeline_resources[now_resource_index][item]" disabled></b-form-input>
+				</div>
+				<div v-else>
+					<h3>{{item}} : </h3>
+					<div v-for="item2 in Object.keys(pipeline_resources[now_resource_index][item])">
+					<h4>&nbsp;&nbsp;&nbsp;&nbsp;{{item2}} :</h4><b-form-input :value="pipeline_resources[now_resource_index][item][item2]" disabled></b-form-input>
+					</div>
+				</div>
+			</div>
+		</b-modal>
+		<!-- resource info 다이얼로그 끝-->
 	</div>
 </template>
 
@@ -73,15 +99,21 @@ export default {
     return {
       pipeline_yml:'',
 	  pipeline_jobs:'',
+	  pipeline_resources:'',
 	  pipeline_name:'',
 	  load_pipeline_deck:[],
 	  checkBox:[],
-	  name_dialog:false
+	  name_dialog:false,
+	  resource_info_dialog:false,
+	  pipeline_info_dialog:false,
+	  now_pipeline_index:0,
+	  now_resource_index:0
     }
   },
   created(){
       this.pipeline_yml=this.$route.params.pipeline_yml
-      this.pipeline_jobs=this.pipeline_yml.jobs
+	  this.pipeline_jobs=this.pipeline_yml.jobs
+	  this.pipeline_resources=this.pipeline_yml.resources
       var beforePassed=''
       //trigger부분
       for(let i=0;i<this.pipeline_jobs.length;i++){
@@ -159,7 +191,13 @@ export default {
 		this.name_dialog=false
 	},
 	showInfo(index){
-		
+		this.now_pipeline_index=index
+		this.pipeline_info_dialog=true
+	},
+	resource_info(index){
+		this.now_resource_index=index	
+		this.resource_info_dialog=true
+
 	}
   }
 }
