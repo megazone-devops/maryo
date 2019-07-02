@@ -34,7 +34,6 @@
 					<br>{{item.name}}
 				</div>
 			</div>
-
 		</div>
 		<div style="width:100px;height:100px;border:1px solid black; margin-left:20px;float:left;text-align:center">
 			<br><br>+
@@ -55,6 +54,11 @@
 				<b-badge variant="success" v-for="item in pipeline_jobs[now_pipeline_index].plan[0].aggregate" :key="item.get" style="margin-right:15px;">{{item.get}}</b-badge>
 			</h3>
 			<div v-if="pipeline_jobs[now_pipeline_index].plan.length>1">
+			<h2>Image resource</h2>
+			<h3>
+				<b-badge variant="success" v-if="pipeline_jobs[now_pipeline_index].plan[1].config.image_resource.type" style="margin-right:15px;">type : {{pipeline_jobs[now_pipeline_index].plan[1].config.image_resource.type}}</b-badge>
+				<b-badge variant="success" v-for="source in Object.keys(pipeline_jobs[now_pipeline_index].plan[1].config.image_resource.source)" style="margin-right:15px;">{{source}} : {{pipeline_jobs[now_pipeline_index].plan[1].config.image_resource.source[source]}}</b-badge>
+			</h3>
 			<h2>Run</h2>
 			    <b-form-textarea
 				id="textarea"
