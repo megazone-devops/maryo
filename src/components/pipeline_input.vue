@@ -24,12 +24,12 @@ export default {
       this.files = this.$refs.inputUpload.files[0]    
       var input = event.target;
       var reader = new FileReader();
-      var dhis = this
+      var self = this
       reader.onload = function () {
           
           var text = reader.result;
           this.pipeline_yml=jsyaml.load(text)
-          dhis.$router.push({ name: 'pipeline_mgmt', params: { pipeline_yml: this.pipeline_yml }})
+          self.$router.push({ name: 'pipeline_mgmt', params: { pipeline_yml: this.pipeline_yml }})
       };
       reader.readAsText(input.files[0]);
       

@@ -5,43 +5,47 @@
 		<h1>
 			RESOURCES
 		</h1>
-		<h2 style="inline-block">
-			<b-badge variant="success" v-for="(item, index) in pipeline_resources" :item="item" style="margin-right:15px; float:left; margin-bottom:8px;" @click="resource_info(index)">{{item.name}}</b-badge>
+		<h2>
+			<b-badge variant="success" class="resourcePosition" v-for="(item, index) in pipeline_resources" :item="item" @click="resource_info(index)">{{item.name}}</b-badge>
 		</h2>
 		<!-- pipeline 부분 -->
-		<h1 style="padding-top: 9px;margin: 40px 0 20px; border-top: 1px solid #eee;display: inline-block; width: 100%;"> 
+		<h1 class="topGrayLine"> 
 			PIPE LINE
 		</h1>
-		<div v-for="(item,index) in pipeline_jobs" style="float:left;">
-			<div v-if="item.overlap=='first'">
-				<div style="width:140px;height:50px">
-					<div v-if="index!=0" style="width:20px;height:0px;float:left;margin: 6px;margin-top: 20px; cursor:pointer;border:3px solid green" :style="item.plan[0].aggregate[item.triggerIndex].trigger? 'border:3px solid green;':'border:3px solid red;'" @click="triggerChange(index,item.triggerIndex)">
+		<draggable v-model="pipeline_jobs" ghost-class="ghost" group="pipeline" @start="drag=true" @end="drag=false">
+			<div v-for="(item,index) in pipeline_jobs" key="index" style="float:left;">
+				<div v-if="item.overlap=='first'">
+					<div style="width:140px;height:50px">
+						<div v-if="index!=0" class="splitLineSize" :style="item.plan[0].aggregate[item.triggerIndex].trigger? 'border:3px solid green;':'border:3px solid red;'" @click="triggerChange(index,item.triggerIndex)">
+						</div>
+						<div class="splitBoxSize" @click="showInfo(index)">
+						<br>{{item.name}}
+						</div>
+						<div v-if="index!=0" class="splitLineSize" :style="pipeline_jobs[index+1].plan[0].aggregate[item.triggerIndex].trigger? 'border:3px solid green;':'border:3px solid red;'" @click="triggerChange(index+1,pipeline_jobs[index+1].triggerIndex)">
+						</div>
+						<div class="splitBoxSize" @click="showInfo(index+1)">
+							<br>{{pipeline_jobs[index+1].name}}
+						</div>
 					</div>
-					<div style="width:100px;height:50px;border:1px solid black;float:left;text-align:center"  @click="showInfo(index)">
-					<br>{{item.name}}
 					</div>
-					<div v-if="index!=0" style="width:20px;height:0px;float:left;margin: 6px;margin-top: 20px; cursor:pointer;border:3px solid green" :style="pipeline_jobs[index+1].plan[0].aggregate[item.triggerIndex].trigger? 'border:3px solid green;':'border:3px solid red;'" @click="triggerChange(index+1,pipeline_jobs[index+1].triggerIndex)">
+				<div v-else-if="item.overlap!='second'">
+					<div v-if="index!=0" class="fullLineSize" :style="item.plan[0].aggregate[item.triggerIndex].trigger? 'border:3px solid green;':'border:3px solid red;'" @click="triggerChange(index,item.triggerIndex)">
 					</div>
-					<div style="width:100px;height:50px;border:1px solid black;float:left;text-align:center" @click="showInfo(index+1)">
-						<br>{{pipeline_jobs[index+1].name}}
+					<div class="fullBoxSize"  @click="showInfo(index)">
+						<br>{{item.name}}
 					</div>
-				</div>
-				</div>
-			<div v-else-if="item.overlap!='second'">
-				<div v-if="index!=0" style="width:20px;height:0px;float:left;margin: 6px;margin-top: 41px; cursor:pointer;border:3px solid green" :style="item.plan[0].aggregate[item.triggerIndex].trigger? 'border:3px solid green;':'border:3px solid red;'" @click="triggerChange(index,item.triggerIndex)">
-				</div>
-				<div style="width:100px;height:100px;border:1px solid black;float:left;text-align:center"  @click="showInfo(index)">
-					<br>{{item.name}}
 				</div>
 			</div>
-		</div>
-		<div style="width:100px;height:100px;border:1px solid black; margin-left:20px;float:left;text-align:center">
+		</draggable>
+
+		<div class="addBoxSize">
 			<br><br>+
 		</div>
 
 		<!-- 버튼부분 -->
-		<button type="button" class="btn btn-primary" @click="allCheck" style="float:right;">All Check</button>
-		<button type="button" class="btn btn-primary" @click="name_dialog=true" style="float:right;">Save Job</button>
+		<!-- <button type="button" class="btn btn-primary" @click="allCheck" style="float:right;">All Check</button>
+		<button type="button" class="btn btn-primary" @click="name_dialog=true" style="float:right;">Save Job</button> -->
+		<button type="button" class="btn btn-primary" @click="exportYml" style="float:right;">export data</button>
 		<!-- 저장 다이얼로그 -->
 		<b-modal v-model="name_dialog" @ok="saveCheck" title="Pipeline 명을 입력해주세요">
 			<b-form-input v-model="pipeline_name" placeholder="Enter job name"></b-form-input>
@@ -94,11 +98,15 @@
 </template>
 
 <script>
+import draggable from 'vuedraggable'
 export default {
-  name: 'pipeline_mgmt',
-  props: {
-    msg: String
-  },
+	name: 'pipeline_mgmt',
+	props: {
+	msg: String
+	},
+	components: {
+		draggable,
+	},
   data() {
     return {
       pipeline_yml:'',
@@ -201,8 +209,54 @@ export default {
 	resource_info(index){
 		this.now_resource_index=index	
 		this.resource_info_dialog=true
-
+	},
+	exportYml(){
+		var data = this.pipeline_jobs
+		console.log("rrrrr")
+		(function () {
+  "use strict";
+ 
+  var YAML = require('json2yaml')
+    , ymlText
+    ;
+ 
+    ymlText = YAML.stringify({
+    data
+    });
+ 
+    console.log(ymlText);
+}());
+		console.log("dddd")
+		console.log(json2yaml(data));
 	}
   }
 }
 </script>
+
+<style>
+.resourcePosition{
+	margin-right:15px; float:left; margin-bottom:8px;
+}
+.topGrayLine{
+	padding-top: 9px;margin: 40px 0 20px; border-top: 1px solid #eee;display: inline-block; width: 100%;
+}
+.splitLineSize{
+	width:20px;height:0px;float:left;margin: 6px;margin-top: 20px; cursor:pointer;border:3px solid green
+}
+.splitBoxSize{
+	width:100px;height:50px;border:1px solid black;float:left;text-align:center
+}
+.fullLineSize{
+	width:20px;height:0px;float:left;margin: 6px;margin-top: 41px; cursor:pointer;border:3px solid green
+}
+.fullBoxSize{
+	width:100px;height:100px;border:1px solid black;float:left;text-align:center
+}
+.addBoxSize{
+	width:100px;height:100px;border:1px solid black; margin-left:20px;float:left;text-align:center
+}
+.ghost {
+  opacity: 0.5;
+  background: #c8ebfb;
+}
+</style>
