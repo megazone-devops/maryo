@@ -99,6 +99,7 @@
 
 <script>
 import draggable from 'vuedraggable'
+import json2yaml from 'json2yaml'
 export default {
 	name: 'pipeline_mgmt',
 	props: {
@@ -211,23 +212,27 @@ export default {
 		this.resource_info_dialog=true
 	},
 	exportYml(){
-		var data = this.pipeline_jobs
+		this.pipeline_yml.jobs = this.pipeline_jobs
+		this.pipeline_yml.resources = this.pipeline_resources
+		var qq = this.pipeline_yml
+		var self = this
 		console.log("rrrrr")
 		(function () {
-  "use strict";
- 
-  var YAML = require('json2yaml')
-    , ymlText
-    ;
- 
-    ymlText = YAML.stringify({
-    data
-    });
- 
-    console.log(ymlText);
-}());
-		console.log("dddd")
-		console.log(json2yaml(data));
+		"use strict";
+
+		var YAML= require('json2yaml')
+			, ymlText
+			;
+		
+			ymlText = YAML.stringify(
+			qq
+			);
+		
+			console.log(ymlText);
+			self.$router.push({ name: 'export_pipeline', params: { export_pipeline: ymlText }})
+		}());
+		// console.log("dddd")
+		// console.log(json2yaml(data));
 	}
   }
 }

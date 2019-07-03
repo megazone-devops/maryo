@@ -2,6 +2,7 @@ import Vue from 'vue'
 import Router from 'vue-router'
 import pipeline_input from './components/pipeline_input.vue'
 import pipeline_mgmt from './components/pipeline_mgmt.vue'
+import export_pipeline from './components/export_pipeline.vue'
 import show_pipeline from './components/show_pipeline.vue'
 
 Vue.use(Router)
@@ -19,6 +20,11 @@ export default new Router({
       path: '/pipeline_mgmt',
       name: 'pipeline_mgmt',
       component: pipeline_mgmt
+    },
+    {
+      path: '/export_pipeline',
+      name: 'export_pipeline',
+      component: export_pipeline
     },
     {
       path: '/show_pipeline',
