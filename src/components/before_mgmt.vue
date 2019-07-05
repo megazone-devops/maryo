@@ -6,49 +6,51 @@
 			RESOURCES
 		</h1>
 		<h2>
-			<b-badge variant="success" class="resourcePosition" v-for="(item, index) in pipeline_resources" :key="index" :item="item" @click="resource_info(index)">{{item.name}}</b-badge>
+			<b-badge variant="success" class="resourcePosition" v-for="(item, index) in pipeline_resources" :item="item" @click="resource_info(index)">{{item.name}}</b-badge>
 		</h2>
 		<!-- pipeline 부분 -->
 		<h1 class="topGrayLine"> 
 			PIPE LINE
 		</h1>
 		<draggable v-model="pipeline_jobs" ghost-class="ghost" group="pipeline" :move="checkMove" @start="drag=true" @end="drag=false">
-			<div v-for="(item,index) in pipeline_jobs" :key="index" style="float:left;position:relative;" @mouseover="job_mouseover(index)" @mouseleave="job_mouseleave(index)">
-				<div v-if="item.length>1">
+			<div v-for="(item,index) in pipeline_jobs" key="index" style="float:left;">
+				<div v-if="item.overlap=='first'">
 					<div style="width:140px;height:50px">
-						<div v-if="index!=0" class="splitLineSize" style="border:3px solid green;">
+						<div v-if="index!=0" class="splitLineSize" :style="item.plan[0].aggregate[item.triggerIndex].trigger? 'border:3px solid green;':'border:3px solid red;'" @click="triggerChange(index,item.triggerIndex)">
 						</div>
 						<div class="splitBoxSize" @click="showInfo(index)">
-						<br>{{item[0].name}}
+						<br>{{item.name}}
 						</div>
-						<div v-if="index!=0" class="splitLineSize" style="border:3px solid green;">
+						<div v-if="index!=0" class="splitLineSize" :style="pipeline_jobs[index+1].plan[0].aggregate[item.triggerIndex].trigger? 'border:3px solid green;':'border:3px solid red;'" @click="triggerChange(index+1,pipeline_jobs[index+1].triggerIndex)">
 						</div>
 						<div class="splitBoxSize" @click="showInfo(index+1)">
-							<br>{{item[1].name}}
+							<br>{{pipeline_jobs[index+1].name}}
 						</div>
 					</div>
 					</div>
-				<div v-else>
-					<div v-if="index!=0" class="fullLineSize" style="border:3px solid green;">
+				<div v-else-if="item.overlap!='second'">
+					<div v-if="index!=0" class="fullLineSize" :style="item.plan[0].aggregate[item.triggerIndex].trigger? 'border:3px solid green;':'border:3px solid red;'" @click="triggerChange(index,item.triggerIndex)">
 					</div>
 					<div class="fullBoxSize"  @click="showInfo(index)">
 						<br>{{item.name}}
 					</div>
 				</div>
-				<b-badge v-if="index==deleteIndex" variant="danger" class="jobDelete" @click="delete_job(index)">Delete</b-badge>
 			</div>
-			
 		</draggable>
-		<br><br><br><br><br><br>
-		<div v-for="(item,index) in pipeline_jobs" :key="index">
-			{{item.name}}
-		</div>
+
 		<div class="addBoxSize">
 			<br><br>+
 		</div>
 
 		<!-- 버튼부분 -->
+		<!-- <button type="button" class="btn btn-primary" @click="allCheck" style="float:right;">All Check</button>
+		<button type="button" class="btn btn-primary" @click="name_dialog=true" style="float:right;">Save Job</button> -->
 		<button type="button" class="btn btn-primary" @click="exportYml" style="float:right;">export data</button>
+		<!-- 저장 다이얼로그 -->
+		<b-modal v-model="name_dialog" @ok="saveCheck" title="Pipeline 명을 입력해주세요">
+			<b-form-input v-model="pipeline_name" placeholder="Enter job name"></b-form-input>
+		</b-modal>
+		<!-- 저장 다이얼로그 끝 -->
 		<!-- job info 다이얼로그 -->
 		<b-modal v-model="pipeline_info_dialog" :title="pipeline_jobs[now_pipeline_index].name">
 			<h2>Aggregate</h2>
@@ -59,7 +61,7 @@
 			<h2>Image resource</h2>
 			<h3>
 				<b-badge variant="success" v-if="pipeline_jobs[now_pipeline_index].plan[1].config.image_resource.type" style="margin-right:15px;">type : {{pipeline_jobs[now_pipeline_index].plan[1].config.image_resource.type}}</b-badge>
-				<b-badge variant="success" v-for="source in Object.keys(pipeline_jobs[now_pipeline_index].plan[1].config.image_resource.source)" :key="source" style="margin-right:15px;">{{source}} : {{pipeline_jobs[now_pipeline_index].plan[1].config.image_resource.source[source]}}</b-badge>
+				<b-badge variant="success" v-for="source in Object.keys(pipeline_jobs[now_pipeline_index].plan[1].config.image_resource.source)" style="margin-right:15px;">{{source}} : {{pipeline_jobs[now_pipeline_index].plan[1].config.image_resource.source[source]}}</b-badge>
 			</h3>
 			<h2>Run</h2>
 			    <b-form-textarea
@@ -118,46 +120,40 @@ export default {
 	  resource_info_dialog:false,
 	  pipeline_info_dialog:false,
 	  now_pipeline_index:0,
-	  now_resource_index:0,
-	  move_before_index:0,
-	  move_after_index:0,
-	  move_flag:false,
-	  deleteIndex:-1,
+	  now_resource_index:0
     }
   },
-  watch:{
-	  pipeline_jobs(){
-		if(this.move_flag){
-			console.log(this.pipeline_jobs[this.move_after_index])
-		}
-	  }
-  },
   created(){
-		if(this.$route.params.pipeline_yml){
-			this.pipeline_yml=this.$route.params.pipeline_yml
-		}
-
-		this.pipeline_jobs=this.pipeline_yml.jobs
-		this.pipeline_resources=this.pipeline_yml.resources
-		var beforePassed=''
-		//최초 세팅 정리
-		for(let i=0;i<this.pipeline_jobs.length;i++){
+      this.pipeline_yml=this.$route.params.pipeline_yml
+	  this.pipeline_jobs=this.pipeline_yml.jobs
+	  this.pipeline_resources=this.pipeline_yml.resources
+      var beforePassed=''
+      //최초 세팅 정리
+      for(let i=0;i<this.pipeline_jobs.length;i++){
 		var plan = this.pipeline_jobs[i].plan[0]
-		for(let j=0;j<plan.aggregate.length;j++){
-			//passed 찾기
-			if(plan.aggregate[j].passed!=null){
-				if(beforePassed==plan.aggregate[j].passed[0]){
-					this.pipeline_jobs[i-1] = [this.pipeline_jobs[i-1],this.pipeline_jobs[i]]
-					this.pipeline_jobs.splice(i,1)
-					i= i-1;
-				}else{
-					beforePassed=plan.aggregate[j].passed[0]
-				}
-			}
-		}        
-	}
+		this.checkBox[i]=false
+        for(let j=0;j<plan.aggregate.length;j++){
+          //trigger찾기
+        //   if(plan.aggregate[j].trigger!=null){
+        //     this.pipeline_jobs[i].triggerIndex=j
+        //   }
+          //passed 찾기
+          if(plan.aggregate[j].passed!=null){
+            this.pipeline_jobs[i].passedIndex=j
+            if(beforePassed==plan.aggregate[j].passed[0]){
+              this.pipeline_jobs[i].overlap='second'
+              this.pipeline_jobs[i-1].overlap='first'
+            }else{
+              beforePassed=plan.aggregate[j].passed[0]
+            }
+          }
+        }        
+      }
   },
   methods: {
+    triggerChange(index,triggerIndex){
+      this.pipeline_jobs[index].plan[0].aggregate[triggerIndex].trigger = !this.pipeline_jobs[index].plan[0].aggregate[triggerIndex].trigger
+	},
 	boxCheck(index){
 		var temp=this.checkBox[index]
 		this.checkBox.splice(index, 1, !temp);
@@ -181,6 +177,31 @@ export default {
 			}
 		}
 		
+	},
+	saveCheck(){
+		//로컬스토리지 불러오고 검사하는 부분
+		if(!localStorage.getItem('pipeline_deck')){
+			var arr=[]
+			localStorage.setItem('pipeline_deck',JSON.stringify(arr))
+		}
+		this.load_pipeline_deck=JSON.parse(localStorage.getItem('pipeline_deck') || "[]");
+		console.log(this.load_pipeline_deck)
+		//중복검사부분
+		for(let i=0;i<this.load_pipeline_deck.length;i++){
+		}
+		var append_arr=[]
+		//저장할 job 만드는부분
+		for(let i=0;i<this.pipeline_jobs.length;i++){
+			if(this.checkBox[i]==true)
+				append_arr.push(this.pipeline_jobs[i])
+		}
+		this.load_pipeline_deck.push({
+			name:this.pipeline_name,
+			jobs:append_arr
+		})
+		
+		localStorage.setItem('pipeline_deck',JSON.stringify(this.load_pipeline_deck))
+		this.name_dialog=false
 	},
 	showInfo(index){
 		this.now_pipeline_index=index
@@ -213,107 +234,9 @@ export default {
 		// console.log("dddd")
 		// console.log(json2yaml(data));
 	},
-	checkMove(e){
-		this.move_before_index=e.draggedContext.index
-		this.move_after_index=e.draggedContext.futureIndex
-		this.move_flag=true
-	},
-	job_mouseover(index){
-		this.deleteIndex=index
-	},
-	job_mouseleave(index){
-		this.deleteIndex=-1
-	},
-	delete_job(index){
-		var job = this.pipeline_jobs[index];
-		var resource_arr=[]
-		var resource_another=[]
-		//가지고있는 resource검사
-		if(job.length>1){
-			for(let i =0;i<job.length;i++){
-				resource_arr = this.find_resource(job[i],resource_arr)
-			}
-		}else{
-			resource_arr = this.find_resource(job,resource_arr)
-		}
-
-		//중복제거
-		resource_arr = resource_arr.reduce(function(a,b){if(a.indexOf(b)<0)a.push(b);return a;},[]);
-		
-		//다른 job에서 사용중인지 resource 검사
-		for(let i=0;i<this.pipeline_jobs.length;i++){
-			if(i!=index){
-				if(this.pipeline_jobs[i].length>1){
-					for(let j =0;j<this.pipeline_jobs[i].length;j++){
-						resource_another = this.find_resource(this.pipeline_jobs[i][j],resource_another)
-					}
-				}else{
-					resource_another = this.find_resource(this.pipeline_jobs[i],resource_another)
-				}
-			}
-		}
-		resource_another = resource_another.reduce(function(a,b){if(a.indexOf(b)<0)a.push(b);return a;},[]);
-		// console.log(resource_arr)
-		// console.log(resource_another)
-		for(let i=0;i<resource_arr.length;i++){
-			for(let j=0;j<resource_another.length;j++){
-				if(resource_arr[i]==resource_another[j])
-					resource_arr.splice(i,1)
-			}
-		}
-		// console.log(resource_arr)
-		console.log(resource_arr)
-		//중복없는 resource 제거
-		if(this.pipeline_jobs.length<400){
-			// console.log("3123213123123")
-			console.log(resource_arr)
-			console.log(this.pipeline_resources)
-		}
-		for(let i=0;i<resource_arr.length;i++){
-			for(let j=0;j<this.pipeline_resources.length;j++){
-				
-				if(resource_arr[i]==this.pipeline_resources[j].name){
-					this.pipeline_resources.splice(j,1)
-				}
-					
-			}
-		}
-		console.log(this.pipeline_resources)
-
-		//resource 제거
-		this.pipeline_jobs.splice(index,1)
-	},
-	find_resource(job,resource_arr){
-		var resource=resource_arr
-		for(let i=0;i<job.plan.length;i++){
-			//aggregate 검사
-			if(i==0){
-				job.plan[i].aggregate.forEach(function(item, arr_index, array){
-					if(item.resource!=null)
-						resource.push(item.resource)
-					else
-						resource.push(item.get)
-				});
-			}
-			//put검사
-			else if(i>1){
-				var item = job.plan[i]
-					//리소스명 검사
-					if(item.resource!=null)
-						resource.push(item.resource)
-					else
-						resource.push(item.put)
-
-					//on_success 검사
-					if(item.on_success!=null)
-						resource.push(item.on_success.put)
-					//on_failure 검사
-					if(item.on_failure!=null)
-						resource.push(item.on_failure.put)
-			}
-		}
-		return resource
-	},
+	checkMove: function(e) {
+		window.console.log("Future index: " + e.draggedContext.futureIndex);
+	}
   }
 }
 </script>
@@ -343,11 +266,5 @@ export default {
 .ghost {
   opacity: 0.5;
   background: #c8ebfb;
-}
-.jobDelete{
-	position: absolute;
-    top: -6px;
-    right: -15px;
-    cursor: pointer;
 }
 </style>
