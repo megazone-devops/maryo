@@ -16,33 +16,32 @@
 			<div v-for="(item,index) in pipeline_jobs" :key="index" style="float:left;position:relative;" @mouseover="job_mouseover(index)" @mouseleave="job_mouseleave(index)">
 				<div v-if="item.length>1">
 					<div style="width:140px;height:50px">
-						<div v-if="index!=0" class="splitLineSize" style="border:3px solid green;">
+						<div v-if="index!=0" class="splitLineSize" :style="passed_pipeline[index][0]==true? 'border:3px solid green;':'border:3px solid red;'">
 						</div>
-						<div class="splitBoxSize" @click="showInfo(index)">
+						<div class="splitBoxSize" @click="showInfo(index[0])">
 						<br>{{item[0].name}}
 						</div>
-						<div v-if="index!=0" class="splitLineSize" style="border:3px solid green;">
+						<div v-if="index!=0" class="splitLineSize" :style="passed_pipeline[index][1]==true? 'border:3px solid green;':'border:3px solid red;'">
 						</div>
-						<div class="splitBoxSize" @click="showInfo(index+1)">
+						<div class="splitBoxSize" @click="showInfo(index[1])">
 							<br>{{item[1].name}}
 						</div>
 					</div>
 					</div>
 				<div v-else>
-					<div v-if="index!=0" class="fullLineSize" style="border:3px solid green;">
+					<div v-if="index!=0" class="fullLineSize" :style="passed_pipeline[index]==true? 'border:3px solid green;':'border:3px solid red;'">
 					</div>
 					<div class="fullBoxSize"  @click="showInfo(index)">
 						<br>{{item.name}}
 					</div>
 				</div>
 				<b-badge v-if="index==deleteIndex" variant="danger" class="jobDelete" @click="delete_job(index)">Delete</b-badge>
+				<b-badge v-if="passed_pipeline[index] != true && passed_pipeline[index].length<2" variant="primary" class="jobLink" @click="link_job(index)">Link</b-badge>
 			</div>
 			
 		</draggable>
-		<br><br><br><br><br><br>
-		<div v-for="(item,index) in pipeline_jobs" :key="index">
-			{{item.name}}
-		</div>
+		<br><br><br><br><br>
+		{{passed_pipeline}}
 		<div class="addBoxSize">
 			<br><br>+
 		</div>
@@ -122,31 +121,72 @@ export default {
 	  move_before_index:0,
 	  move_after_index:0,
 	  move_flag:false,
+	  passed_pipeline:[],
 	  deleteIndex:-1,
     }
   },
   watch:{
 	  pipeline_jobs(){
 		if(this.move_flag){
-			console.log(this.pipeline_jobs[this.move_after_index])
+			this.arr_swap();
+			var index_list=[]
+			index_list=[this.move_after_index,this.move_after_index+1]
+			if(this.move_before_index>this.move_after_index&&this.move_before_index+1<=this.passed_pipeline.length){
+				if(this.move_after_index==0){
+					index_list.splice(0,1)
+					this.remove_resource_link(this.move_after_index)
+				}
+				index_list.push(this.move_before_index+1)
+			}else {
+				if(this.move_after_index==this.passed_pipeline.length){
+					index_list.splice(1,1)
+				}
+				else{
+					index_list.push(this.move_before_index)
+				}
+			}
+			for(let i=0;i<index_list.length;i++){
+				var num = index_list[i]
+				console.log(num)
+				this.remove_resource_link(num)
+				//여러개짜리 검사
+				if(this.pipeline_jobs[num-1].length>1){
+					
+				}else if(this.pipeline_jobs[num].length>1){
+
+				}else{
+					this.passed_pipeline[num] = this.pipeline_passed_check(num);
+				}
+				//1개짜리 검사
+			}
+			//passed가 필요한지
+
+			//passed가 필요하지 않은지
+
 		}
 	  }
   },
   created(){
-		if(this.$route.params.pipeline_yml){
-			this.pipeline_yml=this.$route.params.pipeline_yml
-		}
+	if(this.$route.params.pipeline_yml){
+		this.pipeline_yml=this.$route.params.pipeline_yml
+		localStorage.setItem("pipeline_json", JSON.stringify(this.pipeline_yml));
+	}else{
+		this.pipeline_yml=JSON.parse(localStorage.getItem("pipeline_json"));
+	}
 
-		this.pipeline_jobs=this.pipeline_yml.jobs
-		this.pipeline_resources=this.pipeline_yml.resources
-		var beforePassed=''
-		//최초 세팅 정리
-		for(let i=0;i<this.pipeline_jobs.length;i++){
+	this.pipeline_jobs=this.pipeline_yml.jobs
+	this.pipeline_resources=this.pipeline_yml.resources
+	var beforePassed=''
+	//최초 세팅 정리
+	for(let i=0;i<this.pipeline_jobs.length;i++){
 		var plan = this.pipeline_jobs[i].plan[0]
+		this.passed_pipeline[i] = true
 		for(let j=0;j<plan.aggregate.length;j++){
+			
 			//passed 찾기
 			if(plan.aggregate[j].passed!=null){
 				if(beforePassed==plan.aggregate[j].passed[0]){
+					this.passed_pipeline[i-1] = [true,true]
 					this.pipeline_jobs[i-1] = [this.pipeline_jobs[i-1],this.pipeline_jobs[i]]
 					this.pipeline_jobs.splice(i,1)
 					i= i-1;
@@ -213,10 +253,33 @@ export default {
 		// console.log("dddd")
 		// console.log(json2yaml(data));
 	},
+	pipeline_passed_check(num){
+		var before = this.pipeline_jobs[num-1].plan[0].aggregate
+		var after = this.pipeline_jobs[num].plan[0].aggregate
+		var value=[]
+		after.forEach(function(item, index){
+			before.forEach(function(item2, index2){
+				console.log(item.resource)
+				if(item.resource == item2.resource)
+					value.push(index)
+			});
+		});
+		if(value.length>0)
+			return value
+		else
+			return true
+	},
 	checkMove(e){
 		this.move_before_index=e.draggedContext.index
 		this.move_after_index=e.draggedContext.futureIndex
+		
 		this.move_flag=true
+	},
+	arr_swap(){
+		var temp = this.passed_pipeline[this.move_before_index]
+		this.passed_pipeline[this.move_before_index] = this.passed_pipeline[this.move_after_index]
+		this.passed_pipeline[this.move_after_index] = temp
+		console.log(this.passed_pipeline)
 	},
 	job_mouseover(index){
 		this.deleteIndex=index
@@ -228,6 +291,7 @@ export default {
 		var job = this.pipeline_jobs[index];
 		var resource_arr=[]
 		var resource_another=[]
+
 		//가지고있는 resource검사
 		if(job.length>1){
 			for(let i =0;i<job.length;i++){
@@ -264,11 +328,6 @@ export default {
 		// console.log(resource_arr)
 		console.log(resource_arr)
 		//중복없는 resource 제거
-		if(this.pipeline_jobs.length<400){
-			// console.log("3123213123123")
-			console.log(resource_arr)
-			console.log(this.pipeline_resources)
-		}
 		for(let i=0;i<resource_arr.length;i++){
 			for(let j=0;j<this.pipeline_resources.length;j++){
 				
@@ -281,6 +340,7 @@ export default {
 		console.log(this.pipeline_resources)
 
 		//resource 제거
+		this.passed_pipeline.splice(index,1)
 		this.pipeline_jobs.splice(index,1)
 	},
 	find_resource(job,resource_arr){
@@ -314,6 +374,16 @@ export default {
 		}
 		return resource
 	},
+	remove_resource_link(index){
+		for(let i=0;i<this.pipeline_jobs[index].plan[0].aggregate.length;i++){
+			if(this.pipeline_jobs[index].plan[0].aggregate[i].passed!=null){
+				delete this.pipeline_jobs[index].plan[0].aggregate[i]['passed']
+			}
+			if(this.pipeline_jobs[index].plan[0].aggregate[i].trigger!=null){
+				delete this.pipeline_jobs[index].plan[0].aggregate[i]['trigger']
+			}
+		}
+	}
   }
 }
 </script>
@@ -348,6 +418,12 @@ export default {
 	position: absolute;
     top: -6px;
     right: -15px;
+    cursor: pointer;
+}
+.jobLink{
+	position: absolute;
+    top: -6px;
+    left: 23px;
     cursor: pointer;
 }
 </style>
