@@ -18,12 +18,12 @@
 					<div style="width:140px;height:50px">
 						<div v-if="index!=0" class="splitLineSize" :style="passed_pipeline[index][0]==true? 'border:3px solid green;':'border:3px solid red;'">
 						</div>
-						<div class="splitBoxSize" @click="showInfo(index[0])">
+						<div class="splitBoxSize" @click="showInfo(index)">
 						<br>{{item[0].name}}
 						</div>
 						<div v-if="index!=0" class="splitLineSize" :style="passed_pipeline[index][1]==true? 'border:3px solid green;':'border:3px solid red;'">
 						</div>
-						<div class="splitBoxSize" @click="showInfo(index[1])">
+						<div class="splitBoxSize" @click="showInfo(index)">
 							<br>{{item[1].name}}
 						</div>
 					</div>
@@ -37,6 +37,7 @@
 				</div>
 				<b-badge v-if="index==deleteIndex" variant="danger" class="jobDelete" @click="delete_job(index)">Delete</b-badge>
 				<b-badge v-if="passed_pipeline[index] != true && passed_pipeline[index].length<2" variant="primary" class="jobLink" @click="link_job(index)">Link</b-badge>
+				<b-badge v-if="(passed_pipeline[index][0] != true || passed_pipeline[index][1] != true) && passed_pipeline[index].length>1" variant="primary" class="jobLink" @click="link_job(index)">Link</b-badge>
 			</div>
 			
 		</draggable>
@@ -49,35 +50,64 @@
 		<!-- 버튼부분 -->
 		<button type="button" class="btn btn-primary" @click="exportYml" style="float:right;">export data</button>
 		<!-- job info 다이얼로그 -->
-		<b-modal v-model="pipeline_info_dialog" :title="pipeline_jobs[now_pipeline_index].name">
-			<h2>Aggregate</h2>
-			<h3>
-				<b-badge variant="success" v-for="item in pipeline_jobs[now_pipeline_index].plan[0].aggregate" :key="item.get" style="margin-right:15px;">{{item.get}}</b-badge>
-			</h3>
-			<div v-if="pipeline_jobs[now_pipeline_index].plan.length>1">
-			<h2>Image resource</h2>
-			<h3>
-				<b-badge variant="success" v-if="pipeline_jobs[now_pipeline_index].plan[1].config.image_resource.type" style="margin-right:15px;">type : {{pipeline_jobs[now_pipeline_index].plan[1].config.image_resource.type}}</b-badge>
-				<b-badge variant="success" v-for="source in Object.keys(pipeline_jobs[now_pipeline_index].plan[1].config.image_resource.source)" :key="source" style="margin-right:15px;">{{source}} : {{pipeline_jobs[now_pipeline_index].plan[1].config.image_resource.source[source]}}</b-badge>
-			</h3>
-			<h2>Run</h2>
-			    <b-form-textarea
-				id="textarea"
-				v-model="pipeline_jobs[now_pipeline_index].plan[1].config.run.args"
-				rows="7"
-				disabled
-				></b-form-textarea>
+		<b-modal v-model="pipeline_info_dialog" title="Job" ok-only>
+			<div v-if="pipeline_jobs[now_pipeline_index].name != null">
+				<h1>{{pipeline_jobs[now_pipeline_index].name}}</h1>
+				<h2>Aggregate</h2>
+				<h3>
+					<b-badge variant="success" v-for="item in pipeline_jobs[now_pipeline_index].plan[0].aggregate" :key="item.get" style="margin-right:15px;">{{item.get}}</b-badge>
+				</h3>
+				<div v-if="pipeline_jobs[now_pipeline_index].plan.length>1">
+				<h2>Image resource</h2>
+				<h3>
+					<b-badge variant="success" v-if="pipeline_jobs[now_pipeline_index].plan[1].config.image_resource.type" style="margin-right:15px;">type : {{pipeline_jobs[now_pipeline_index].plan[1].config.image_resource.type}}</b-badge>
+					<b-badge variant="success" v-for="source in Object.keys(pipeline_jobs[now_pipeline_index].plan[1].config.image_resource.source)" :key="source" style="margin-right:15px;">{{source}} : {{pipeline_jobs[now_pipeline_index].plan[1].config.image_resource.source[source]}}</b-badge>
+				</h3>
+				<h2>Run</h2>
+					<b-form-textarea
+					id="textarea"
+					v-model="pipeline_jobs[now_pipeline_index].plan[1].config.run.args"
+					rows="7"
+					disabled
+					></b-form-textarea>
+				</div>
+				<h2>Resources</h2>
+				<h3 v-for="(item, index) in pipeline_jobs[now_pipeline_index].plan" :key="item.get">
+					<b-badge v-if="index!=0 && index!=1" variant="success"  style="margin-right:15px;">{{item.put}}</b-badge>
+				</h3>
 			</div>
-			<h2>Resources</h2>
-			<h3 v-for="(item, index) in pipeline_jobs[now_pipeline_index].plan" :key="item.get">
-				<b-badge v-if="index!=0 && index!=1" variant="success"  style="margin-right:15px;">{{item.put}}</b-badge>
-			</h3>
+			<div v-else v-for="item in pipeline_jobs[now_pipeline_index]">
+				<h1>{{item.name}}</h1>
+				<h3>Aggregate</h3>
+				<h4>
+					<b-badge variant="success" v-for="item in item.plan[0].aggregate" :key="item.get" style="margin-right:15px;">{{item.get}}</b-badge>
+				</h4>
+				<div v-if="item.plan.length>1">
+				<h3>Image resource</h3>
+				<h4>
+					<b-badge variant="success" v-if="item.plan[1].config.image_resource.type" style="margin-right:15px;">type : {{item.plan[1].config.image_resource.type}}</b-badge>
+					<b-badge variant="success" v-for="source in Object.keys(item.plan[1].config.image_resource.source)" :key="source" style="margin-right:15px;">{{source}} : {{item.plan[1].config.image_resource.source[source]}}</b-badge>
+				</h4>
+				<h3>Run</h3>
+					<b-form-textarea
+					id="textarea"
+					v-model="item.plan[1].config.run.args"
+					rows="7"
+					disabled
+					></b-form-textarea>
+				</div>
+				<h3>Resources</h3>
+				<h4 v-for="(item, index) in item.plan" :key="item.get">
+					<b-badge v-if="index!=0 && index!=1" variant="success"  style="margin-right:15px;">{{item.put}}</b-badge>
+				</h4>
+			</div>
 			
+
 		</b-modal>
 		<!-- job info 다이얼로그 끝 -->
 
 		<!-- resource info 다이얼로그 -->
-		<b-modal v-model="resource_info_dialog" title="Resource">
+		<b-modal v-model="resource_info_dialog" title="Resource" ok-only>
 			<div v-for="item in Object.keys(pipeline_resources[now_resource_index])">
 				<div v-if="typeof(pipeline_resources[now_resource_index][item])!='object'">
 					<h3>{{item}} :</h3><b-form-input :value="pipeline_resources[now_resource_index][item]" disabled></b-form-input>
@@ -91,6 +121,37 @@
 			</div>
 		</b-modal>
 		<!-- resource info 다이얼로그 끝-->
+
+		<!-- link 다이얼로그 -->
+		<b-modal v-model="link_dialog" title="Link" hide-footer>
+			<div v-for="(item,index) in passed_pipeline[passed_index]" :key="index">
+				<div v-if="typeof(item)=='object'">
+					<h2>{{pipeline_jobs[passed_index][index].name}}</h2>
+					<div v-for="(item2, index2) in item" :key="index2">
+						<br><h5>{{pipeline_jobs[passed_index][index].plan[0].aggregate[item2].resource}}</h5>
+						<b-form-checkbox v-model="passed_check_double[index][index2]" name="check-button" switch>
+								<b>Passed: {{ passed_check_double[index][index2]? passed_check_double[index][index2]:'false' }}</b>
+						</b-form-checkbox>
+							<b-form-checkbox v-model="trigger_check_double[index][index2]" name="check-button" switch>
+								<b>Trigger: {{ trigger_check_double[index][index2]? trigger_check_double[index][index2]:'false' }}</b>
+						</b-form-checkbox>
+					</div>
+				</div>
+				<div v-else-if="typeof(item)=='number'">
+					<h2 v-if="index==0">{{pipeline_jobs[passed_index].name}}</h2>
+					<br><h5>{{pipeline_jobs[passed_index].plan[0].aggregate[item].resource}}</h5>
+					<b-form-checkbox v-model="passed_check[index]" name="check-button" switch>
+						<b>Passed: {{ passed_check[index]? passed_check[index]:'false' }}</b>
+					</b-form-checkbox>
+					<b-form-checkbox v-model="trigger_check[index]" name="check-button" switch>
+						<b>Trigger: {{ trigger_check[index]? trigger_check[index]:'false' }}</b>
+					</b-form-checkbox>
+				</div>
+			</div>
+			<!-- <b-button class="mt-3" block @click="$bvModal.hide('bv-modal-example')">Close Me</b-button> -->
+			<b-button class="mt-2" variant="outline-success" block @click="save_pass(passed_index)">SAVE</b-button>
+		</b-modal>
+		<!-- link 다이얼로그 끝-->
 	</div>
 </template>
 
@@ -116,13 +177,19 @@ export default {
 	  name_dialog:false,
 	  resource_info_dialog:false,
 	  pipeline_info_dialog:false,
+	  link_dialog:false,
 	  now_pipeline_index:0,
 	  now_resource_index:0,
 	  move_before_index:0,
 	  move_after_index:0,
 	  move_flag:false,
 	  passed_pipeline:[],
+	  passed_index:-1,
 	  deleteIndex:-1,
+	  passed_check:[],
+	  passed_check_double:[[],[]],
+	  trigger_check:[],
+	  trigger_check_double:[[],[]],
     }
   },
   watch:{
@@ -136,9 +203,11 @@ export default {
 					index_list.splice(0,1)
 					this.remove_resource_link(this.move_after_index)
 				}
-				index_list.push(this.move_before_index+1)
+				if(this.move_after_index!=this.passed_pipeline.length-2){
+					index_list.push(this.move_before_index+1)
+				}
 			}else {
-				if(this.move_after_index==this.passed_pipeline.length){
+				if(this.move_after_index==this.passed_pipeline.length-1 ){
 					index_list.splice(1,1)
 				}
 				else{
@@ -147,13 +216,12 @@ export default {
 			}
 			for(let i=0;i<index_list.length;i++){
 				var num = index_list[i]
-				console.log(num)
 				this.remove_resource_link(num)
 				//여러개짜리 검사
 				if(this.pipeline_jobs[num-1].length>1){
-					
+					this.passed_pipeline[num] =this.pipeline_passed_check(num,'before');
 				}else if(this.pipeline_jobs[num].length>1){
-
+					this.passed_pipeline[num] = this.pipeline_passed_check(num,'after');
 				}else{
 					this.passed_pipeline[num] = this.pipeline_passed_check(num);
 				}
@@ -253,17 +321,83 @@ export default {
 		// console.log("dddd")
 		// console.log(json2yaml(data));
 	},
-	pipeline_passed_check(num){
-		var before = this.pipeline_jobs[num-1].plan[0].aggregate
-		var after = this.pipeline_jobs[num].plan[0].aggregate
+	pipeline_passed_check(num,arr_position){
+			var before = []
+			var after = []
+			var before2=[]
+			var self = this
+		if(arr_position==null){
+			before = this.pipeline_jobs[num-1].plan[0].aggregate
+			after = this.pipeline_jobs[num].plan[0].aggregate
+			
+			if(this.pipeline_jobs[num-1].plan.length>2){
+				this.pipeline_jobs[num-1].plan.forEach(function(item, index){
+					if(index>1){
+						before2.push(item)
+					}
+				})
+			}
+		}
+		else if(arr_position=='before'){
+			for(let i=0;i<this.pipeline_jobs[num-1].length;i++){
+				if(this.pipeline_jobs[num-1][i].name=='close')
+					before = this.pipeline_jobs[num-1][i].plan[0].aggregate
+
+					if(this.pipeline_jobs[num-1][i].plan.length>2){
+						this.pipeline_jobs[num-1][i].plan.forEach(function(item, index){
+						if(index>1){
+							before2.push(item)
+						}
+							
+					})
+				}
+			}
+			after = this.pipeline_jobs[num].plan[0].aggregate
+			
+		}
+		else if(arr_position=='after'){
+			before = this.pipeline_jobs[num-1].plan[0].aggregate
+			if(this.pipeline_jobs[num-1].plan.length>2){
+				this.pipeline_jobs[num-1].plan.forEach(function(item, index){
+					
+					if(index>1){
+						before2.push(item)
+					}
+				})
+			}
+			after = [this.pipeline_jobs[num][0].plan[0].aggregate, this.pipeline_jobs[num][1].plan[0].aggregate]
+		}
+		before = before.concat(before2)		
+
 		var value=[]
-		after.forEach(function(item, index){
-			before.forEach(function(item2, index2){
-				console.log(item.resource)
-				if(item.resource == item2.resource)
-					value.push(index)
+		if(arr_position=='after'){
+			for(let i=0;i<after.length;i++){
+				var value2=[]
+				after[i].forEach(function(item, index){				
+					before.forEach(function(item2, index2){
+						if(item.resource == item2.resource || item.resource == item2.put){
+							value2.push(index)
+						}
+							
+					});
+				});
+				if(value2.lengt==0)
+					value2=true
+
+				value2 = value2.slice().sort(function(a,b){return a - b}).reduce(function(a,b){if (a.slice(-1)[0] !== b) a.push(b);return a;},[]);
+				value.push(value2)
+			}
+
+		}else{
+			after.forEach(function(item, index){
+				before.forEach(function(item2, index2){
+					if(item.resource == item2.resource || item.resource == item2.put)
+						value.push(index)
+				});
 			});
-		});
+			value = value.slice().sort(function(a,b){return a - b}).reduce(function(a,b){if (a.slice(-1)[0] !== b) a.push(b);return a;},[]);
+		}
+
 		if(value.length>0)
 			return value
 		else
@@ -279,7 +413,6 @@ export default {
 		var temp = this.passed_pipeline[this.move_before_index]
 		this.passed_pipeline[this.move_before_index] = this.passed_pipeline[this.move_after_index]
 		this.passed_pipeline[this.move_after_index] = temp
-		console.log(this.passed_pipeline)
 	},
 	job_mouseover(index){
 		this.deleteIndex=index
@@ -326,7 +459,6 @@ export default {
 			}
 		}
 		// console.log(resource_arr)
-		console.log(resource_arr)
 		//중복없는 resource 제거
 		for(let i=0;i<resource_arr.length;i++){
 			for(let j=0;j<this.pipeline_resources.length;j++){
@@ -375,15 +507,85 @@ export default {
 		return resource
 	},
 	remove_resource_link(index){
-		for(let i=0;i<this.pipeline_jobs[index].plan[0].aggregate.length;i++){
-			if(this.pipeline_jobs[index].plan[0].aggregate[i].passed!=null){
-				delete this.pipeline_jobs[index].plan[0].aggregate[i]['passed']
-			}
-			if(this.pipeline_jobs[index].plan[0].aggregate[i].trigger!=null){
-				delete this.pipeline_jobs[index].plan[0].aggregate[i]['trigger']
+		if(this.pipeline_jobs[index].name != null){
+			for(let i=0;i<this.pipeline_jobs[index].plan[0].aggregate.length;i++){
+				if(this.pipeline_jobs[index].plan[0].aggregate[i].passed!=null){
+					delete this.pipeline_jobs[index].plan[0].aggregate[i]['passed']
+				}
+				if(this.pipeline_jobs[index].plan[0].aggregate[i].trigger!=null){
+					delete this.pipeline_jobs[index].plan[0].aggregate[i]['trigger']
+				}
 			}
 		}
-	}
+		else{
+			for(let j=0;j<this.pipeline_jobs[index].length;j++){
+				for(let i=0;i<this.pipeline_jobs[index][j].plan[0].aggregate.length;i++){
+					if(this.pipeline_jobs[index][j].plan[0].aggregate[i].passed!=null){
+						delete this.pipeline_jobs[index][j].plan[0].aggregate[i]['passed']
+					}
+					if(this.pipeline_jobs[index][j].plan[0].aggregate[i].trigger!=null){
+						delete this.pipeline_jobs[index][j].plan[0].aggregate[i]['trigger']
+					}
+				}
+			}
+		}
+
+	},
+	link_job(index){
+		this.link_dialog=true;
+		this.passed_index=index;
+	},
+	save_pass(index){
+		console.log(this.passed_check)
+		// console.log(this.trigger_check)
+		//수정한대로 변경하는버튼
+		if(typeof(this.passed_pipeline[index][0])=='number'){
+			for(let i=0;i<this.passed_check.length;i++){
+				if(this.passed_check[i]==true){
+					var res = this.passed_pipeline[index][i]
+					this.pipeline_jobs[index].plan[0].aggregate[res]['passed'] = true
+				}
+			}
+			for(let i=0;i<this.trigger_check.length;i++){
+				if(this.trigger_check[i]==true){
+					var res = this.passed_pipeline[index][i]
+					this.pipeline_jobs[index].plan[0].aggregate[res]['trigger'] = true
+				}
+			}
+		}
+		else{
+			var self = this
+			this.passed_check_double.forEach(function(item,idx){
+				item.forEach(function(item2, idx2){
+					if(item2==true){
+						var res = self.passed_pipeline[index][idx][idx2]
+						self.pipeline_jobs[index][idx].plan[0].aggregate[res]['passed'] = true
+					}
+				})
+			})
+			this.trigger_check_double.forEach(function(item,idx){
+				item.forEach(function(item2, idx2){
+					if(item2==true){
+						var res = self.passed_pipeline[index][idx][idx2]
+						self.pipeline_jobs[index][idx].plan[0].aggregate[res]['trigger'] = true
+						console.log(self.pipeline_jobs[index])
+					}
+				})
+			})
+		}
+
+		//링크라고 표시버튼 지워주는부분
+		if(typeof(this.passed_pipeline[index][0])=='number'){
+			this.passed_pipeline[index]=true
+		}else{
+			this.passed_pipeline[index]=[true,true]
+		}
+		this.link_dialog=false;
+		this.passed_check=[]
+		this.trigger_check=[]
+		this.passed_check_double=[[],[]]
+		this.trigger_check_double=[[],[]]
+	},
   }
 }
 </script>
