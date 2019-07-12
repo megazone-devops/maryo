@@ -1,0 +1,583 @@
+[
+    {
+        "name": "test-develop",
+        "serial": true,
+        "public": true,
+        "plan": [
+            {
+                "aggregate": [
+                    {
+                        "get": "repo",
+                        "resource": "((developer_git_branch))"
+                    }
+                ]
+            },
+            {
+                "task": "unit",
+                "config": {
+                    "platform": "linux",
+                    "image_resource": {
+                        "type": "docker-image",
+                        "source": {
+                            "repository": "node",
+                            "tag": "lts-alpine"
+                        }
+                    },
+                    "inputs": [
+                        {
+                            "name": "repo"
+                        }
+                    ],
+                    "run": {
+                        "path": "/bin/sh",
+                        "args": [
+                            "-c",
+                            ""
+                        ]
+                    }
+                },
+                "on_failure": {
+                    "put": "wrapper_fail_deploy-develop"
+                }
+            }
+        ]
+    },
+    {
+        "name": "deploy-develop",
+        "serial": true,
+        "public": false,
+        "plan": [
+            {
+                "aggregate": [
+                    {
+                        "get": "repo",
+                        "resource": "((developer_git_branch))"
+                    }
+                ]
+            },
+            {
+                "task": "build",
+                "config": {
+                    "platform": "linux",
+                    "image_resource": {
+                        "type": "docker-image",
+                        "source": {
+                            "repository": "node",
+                            "tag": "12.2.0-alpine"
+                        }
+                    },
+                    "inputs": [
+                        {
+                            "name": "repo"
+                        }
+                    ],
+                    "outputs": [
+                        {
+                            "name": "output"
+                        }
+                    ],
+                    "params": {
+                        "repo": "repo",
+                        "image_project": "((image_project_dev))",
+                        "image_name": "((wrapper_group_name))-((wrapper_project_code_lower))",
+                        "image_tag": "((ticket_version))"
+                    },
+                    "run": {
+                        "path": "/bin/sh",
+                        "args": [
+                            "-c",
+                            "cp -r $repo/* output\ncd $repo\ncat src/App.vue\ncat << EOF >> Dockerfile\nFROM node:lts-alpine\nRUN npm install -g http-server\nWORKDIR /app\nCOPY package*.json ./\nRUN npm i terser@4.0.0\nRUN npm install\nCOPY . .\nRUN npm run build\nEXPOSE 8080\nCMD [ \"http-server\", \"dist\" ]\nEOF\nls ../output/\ncp Dockerfile ../output/Dockerfile\ncat <<EOF >> manifest.yml\napplications:\n- memory: 1024M\n docker:\n image: registry.mzdev.kr/$image_project/$image_name:$image_tag\n command: \nEOF\ncp manifest.yml ../output/\nls ../output/\n"
+                        ]
+                    }
+                },
+                "on_failure": {
+                    "put": "wrapper_fail_deploy-develop"
+                }
+            },
+            {
+                "put": "docker-registry-dev",
+                "params": {
+                    "build": "output/"
+                },
+                "on_failure": {
+                    "put": "wrapper_fail_deploy-develop"
+                }
+            },
+            {
+                "put": "cf-dev",
+                "params": {
+                    "manifest": "output/manifest.yml",
+                    "current_app_name": "((wrapper_group_name))-((wrapper_ticket_number))"
+                },
+                "on_failure": {
+                    "put": "wrapper_fail_deploy-develop"
+                }
+            }
+        ]
+    },
+    {
+        "name": "stg-merge",
+        "serial": true,
+        "public": true,
+        "plan": [
+            {
+                "aggregate": [
+                    {
+                        "get": "cf-dev",
+                        "resource": "cf-dev"
+                    },
+                    {
+                        "get": "repo",
+                        "resource": "((developer_git_branch))"
+                    }
+                ]
+            }
+        ]
+    },
+    {
+        "name": "merge-dev-to-release",
+        "public": true,
+        "plan": [
+            {
+                "aggregate": [
+                    {
+                        "get": "repo",
+                        "resource": "((developer_git_branch))"
+                    },
+                    {
+                        "get": "repo-release",
+                        "resource": "repo-release"
+                    }
+                ]
+            },
+            {
+                "task": "merge-dev-to-release",
+                "config": {
+                    "platform": "linux",
+                    "image_resource": {
+                        "type": "docker-image",
+                        "source": {
+                            "repository": "getourneau/alpine-bash-git"
+                        }
+                    },
+                    "inputs": [
+                        {
+                            "name": "from",
+                            "path": "repo"
+                        },
+                        {
+                            "name": "to",
+                            "path": "repo-target"
+                        }
+                    ],
+                    "outputs": [
+                        {
+                            "name": "out"
+                        }
+                    ],
+                    "run": {
+                        "path": "/bin/bash",
+                        "args": [
+                            "-c",
+                            "if [ \"$DEBUG\" = \"true\" ]; then\nset -x\nfi\ngit config --global user.email \"${GIT_EMAIL}\"\ngit config --global user.name \"${GIT_NAME}\"\ncd out\nshopt -s dotglob\nrm -rf *\nmv -f ../repo/* ./\nGIT_SSH_COMMAND=\"ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no\" git remote add -f repo-target ../repo-target\ngit merge -s ours \"repo-target/release\" -m \"$group-$code-$version merge to release\"\n"
+                        ]
+                    }
+                },
+                "input_mapping": {
+                    "from": "repo",
+                    "to": "repo-release"
+                },
+                "params": {
+                    "GIT_EMAIL": "((git_email))",
+                    "GIT_NAME": "((git_name))",
+                    "group": "((wrapper_group_name))",
+                    "code": "((wrapper_project_code))",
+                    "version": "((ticket_version))"
+                },
+                "on_failure": {
+                    "put": "wrapper_fail_stg-merge"
+                }
+            },
+            {
+                "put": "repo",
+                "resource": "repo-release",
+                "params": {
+                    "repository": "out"
+                },
+                "on_failure": {
+                    "put": "wrapper_fail_stg-merge"
+                }
+            }
+        ]
+    },
+    {
+        "name": "test-stg",
+        "serial": true,
+        "public": true,
+        "plan": [
+            {
+                "aggregate": [
+                    {
+                        "get": "repo",
+                        "resource": "repo-release"
+                    }
+                ]
+            },
+            {
+                "task": "unit",
+                "config": {
+                    "platform": "linux",
+                    "image_resource": {
+                        "type": "docker-image",
+                        "source": {
+                            "repository": "node",
+                            "tag": "lts-alpine"
+                        }
+                    },
+                    "inputs": [
+                        {
+                            "name": "repo"
+                        }
+                    ],
+                    "run": {
+                        "path": "/bin/sh",
+                        "args": [
+                            "-c",
+                            ""
+                        ]
+                    }
+                },
+                "on_failure": {
+                    "put": "wrapper_fail_stg-merge"
+                }
+            }
+        ]
+    },
+    {
+        "name": "deploy-stg",
+        "serial": true,
+        "public": false,
+        "plan": [
+            {
+                "aggregate": [
+                    {
+                        "get": "repo",
+                        "resource": "repo-release"
+                    }
+                ]
+            },
+            {
+                "task": "build",
+                "config": {
+                    "platform": "linux",
+                    "image_resource": {
+                        "type": "docker-image",
+                        "source": {
+                            "repository": "node",
+                            "tag": "12.2.0-alpine"
+                        }
+                    },
+                    "inputs": [
+                        {
+                            "name": "repo"
+                        }
+                    ],
+                    "outputs": [
+                        {
+                            "name": "output"
+                        }
+                    ],
+                    "params": {
+                        "repo": "repo",
+                        "image_project": "((image_project_rel))",
+                        "image_name": "((wrapper_group_name))-((wrapper_project_code_lower))",
+                        "image_tag": "((ticket_version))"
+                    },
+                    "run": {
+                        "path": "/bin/sh",
+                        "args": [
+                            "-c",
+                            "cp -r repo/* output\ncd repo\ncat src/App.vue\ncat << EOF >> Dockerfile\nFROM node:lts-alpine\nRUN npm install -g http-server\nWORKDIR /app\nCOPY package*.json ./\nRUN npm install\nCOPY . .\nRUN npm run build\nEXPOSE 8080\nCMD [ \"http-server\", \"dist\" ]\nEOF\nls ../output/\ncp Dockerfile ../output/Dockerfile\ncat <<EOF >> manifest.yml\napplications:\n- memory: 1024M\n docker:\n image: registry.mzdev.kr/$image_project/$image_name:$image_tag\n command: \nEOF\ncp manifest.yml ../output/\nls ../output/\n"
+                        ]
+                    }
+                },
+                "on_failure": {
+                    "put": "wrapper_fail_stg-merge"
+                }
+            },
+            {
+                "put": "docker-registry-rel",
+                "params": {
+                    "build": "output/"
+                },
+                "on_failure": {
+                    "put": "wrapper_fail_stg-merge"
+                }
+            },
+            {
+                "put": "cf-release",
+                "params": {
+                    "manifest": "output/manifest.yml",
+                    "current_app_name": "((wrapper_group_name))-((wrapper_project_code))"
+                },
+                "on_failure": {
+                    "put": "wrapper_fail_stg-merge"
+                }
+            }
+        ]
+    },
+    {
+        "name": "pass-stg",
+        "plan": [
+            {
+                "aggregate": [
+                    {
+                        "get": "repo",
+                        "resource": "repo-release"
+                    },
+                    {
+                        "get": "cf-release",
+                        "resource": "cf-release"
+                    }
+                ]
+            }
+        ]
+    },
+    {
+        "name": "deploy-prod",
+        "serial": true,
+        "public": false,
+        "plan": [
+            {
+                "aggregate": [
+                    {
+                        "get": "repo",
+                        "resource": "repo-release"
+                    }
+                ]
+            },
+            {
+                "task": "build",
+                "config": {
+                    "platform": "linux",
+                    "image_resource": {
+                        "type": "docker-image",
+                        "source": {
+                            "repository": "node",
+                            "tag": "12.2.0-alpine"
+                        }
+                    },
+                    "inputs": [
+                        {
+                            "name": "repo"
+                        }
+                    ],
+                    "outputs": [
+                        {
+                            "name": "output"
+                        }
+                    ],
+                    "params": {
+                        "repo": "repo",
+                        "image_project": "((image_project_rel))",
+                        "image_name": "((wrapper_group_name))-((wrapper_project_code_lower))",
+                        "image_tag": "((ticket_version))"
+                    },
+                    "run": {
+                        "path": "/bin/sh",
+                        "args": [
+                            "-c",
+                            "ls\ncd repo\nls\ncat <<EOF >> manifest.yml\napplications:\n- memory: 1024M\n docker:\n image: registry.mzdev.kr/$image_project/$image_name:$image_tag\n command: \nEOF\ncp manifest.yml ../output/\nls ../output/\n"
+                        ]
+                    }
+                },
+                "on_failure": {
+                    "put": "wrapper_fail_stg-merge"
+                }
+            },
+            {
+                "put": "cf-prod",
+                "params": {
+                    "manifest": "output/manifest.yml",
+                    "current_app_name": "((wrapper_group_name))-((wrapper_project_code))"
+                },
+                "on_failure": {
+                    "put": "wrapper_fail_pass-stg"
+                }
+            },
+            {
+                "put": "cf-delete",
+                "resource": "cf-delete",
+                "params": {
+                    "command": "delete",
+                    "app_name": "((wrapper_group_name))-((wrapper_ticket_number))",
+                    "delete_mapped_routes": true
+                }
+            }
+        ]
+    },
+    [
+        {
+            "name": "roll-back",
+            "serial": true,
+            "public": true,
+            "plan": [
+                {
+                    "aggregate": [
+                        {
+                            "get": "repo",
+                            "resource": "repo-release"
+                        },
+                        {
+                            "get": "docker-registry-rollback",
+                            "resource": "docker-registry-rollback"
+                        }
+                    ]
+                },
+                {
+                    "task": "build",
+                    "config": {
+                        "platform": "linux",
+                        "image_resource": {
+                            "type": "docker-image",
+                            "source": {
+                                "repository": "node",
+                                "tag": "12.2.0-alpine"
+                            }
+                        },
+                        "inputs": [
+                            {
+                                "name": "repo"
+                            }
+                        ],
+                        "outputs": [
+                            {
+                                "name": "output"
+                            }
+                        ],
+                        "params": {
+                            "image_project": "((image_project_rel))",
+                            "image_name": "((wrapper_group_name))-((wrapper_project_code_lower))",
+                            "image_tag": "((rollback_version))"
+                        },
+                        "run": {
+                            "path": "/bin/sh",
+                            "args": [
+                                "-c",
+                                "cd repo\ncat <<EOF >> manifest.yml\napplications:\n- memory: 1024M\n docker:\n image: registry.mzdev.kr/$image_project/$image_name:$image_tag\n command: \nEOF\ncp manifest.yml ../output/\nls ../output/\n"
+                            ]
+                        }
+                    },
+                    "on_failure": {
+                        "put": "wrapper_fail_stg-merge"
+                    }
+                },
+                {
+                    "put": "docker-registry-rollback",
+                    "params": {
+                        "manifest": "output/manifest.yml",
+                        "current_app_name": "((wrapper_group_name))-((wrapper_project_code))"
+                    },
+                    "on_failure": {
+                        "put": "wrapper_fail_roll-back"
+                    }
+                }
+            ]
+        },
+        {
+            "name": "close",
+            "serial": true,
+            "public": true,
+            "plan": [
+                {
+                    "aggregate": [
+                        {
+                            "get": "repo",
+                            "resource": "repo-release"
+                        },
+                        {
+                            "get": "cf-prod",
+                            "resource": "cf-prod"
+                        }
+                    ]
+                }
+            ]
+        }
+    ],
+    {
+        "name": "merge-release-to-master",
+        "public": true,
+        "plan": [
+            {
+                "aggregate": [
+                    {
+                        "get": "repo",
+                        "resource": "repo-release"
+                    },
+                    {
+                        "get": "repo-master",
+                        "resource": "repo-master"
+                    }
+                ]
+            },
+            {
+                "task": "merge-dev-to-release",
+                "config": {
+                    "platform": "linux",
+                    "image_resource": {
+                        "type": "docker-image",
+                        "source": {
+                            "repository": "getourneau/alpine-bash-git"
+                        }
+                    },
+                    "inputs": [
+                        {
+                            "name": "from",
+                            "path": "repo"
+                        },
+                        {
+                            "name": "to",
+                            "path": "repo-target"
+                        }
+                    ],
+                    "outputs": [
+                        {
+                            "name": "out"
+                        }
+                    ],
+                    "run": {
+                        "path": "/bin/bash",
+                        "args": [
+                            "-c",
+                            "if [ \"$DEBUG\" = \"true\" ]; then\nset -x\nfi\ngit config --global user.email \"${GIT_EMAIL}\"\ngit config --global user.name \"${GIT_NAME}\"\ncd out\nshopt -s dotglob\nrm -rf *\nmv -f ../repo/* ./\nGIT_SSH_COMMAND=\"ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no\" git remote add -f repo-target ../repo-target\ngit merge --ff \"repo-target/master\" -m \"$group-$code-$version-release merge to master\"\ngit tag $version\n"
+                        ]
+                    }
+                },
+                "input_mapping": {
+                    "from": "repo",
+                    "to": "repo-master"
+                },
+                "params": {
+                    "GIT_EMAIL": "((git_email))",
+                    "GIT_NAME": "((git_name))",
+                    "group": "((wrapper_group_name))",
+                    "code": "((wrapper_project_code))",
+                    "version": "((ticket_version))"
+                },
+                "on_failure": {
+                    "put": "wrapper_fail_stg-merge"
+                }
+            },
+            {
+                "put": "repo",
+                "resource": "repo-master",
+                "params": {
+                    "repository": "out"
+                },
+                "on_failure": {
+                    "put": "wrapper_fail_close"
+                }
+            }
+        ]
+    }
+]
