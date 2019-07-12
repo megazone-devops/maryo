@@ -16,12 +16,12 @@
 			<div v-for="(item,index) in pipeline_jobs" :key="index" style="float:left;position:relative;" @mouseover="job_mouseover(index)" @mouseleave="job_mouseleave(index)">
 				<div v-if="item.length>1">
 					<div style="width:140px;height:50px">
-						<div v-if="index!=0" class="splitLineSize" :style="passed_pipeline[index][0]==true? 'border:3px solid green;':'border:3px solid red;'">
+						<div v-if="index!=0" class="splitLineSize" :style="passed_pipeline[index][0]=='not'? 'border:3px solid green;':'border:3px solid red;'">
 						</div>
 						<div class="splitBoxSize" @click="showInfo(index)">
 						<br>{{item[0].name}}
 						</div>
-						<div v-if="index!=0" class="splitLineSize" :style="passed_pipeline[index][1]==true? 'border:3px solid green;':'border:3px solid red;'">
+						<div v-if="index!=0" class="splitLineSize" :style="passed_pipeline[index][1]=='not'? 'border:3px solid green;':'border:3px solid red;'">
 						</div>
 						<div class="splitBoxSize" @click="showInfo(index)">
 							<br>{{item[1].name}}
@@ -29,20 +29,19 @@
 					</div>
 					</div>
 				<div v-else>
-					<div v-if="index!=0" class="fullLineSize" :style="passed_pipeline[index]==true? 'border:3px solid green;':'border:3px solid red;'">
+					<div v-if="index!=0" class="fullLineSize" :style="passed_pipeline[index]=='not'? 'border:3px solid green;':'border:3px solid red;'">
 					</div>
 					<div class="fullBoxSize"  @click="showInfo(index)">
 						<br>{{item.name}}
 					</div>
 				</div>
 				<b-badge v-if="index==deleteIndex" variant="danger" class="jobDelete" @click="delete_job(index)">Delete</b-badge>
-				<b-badge v-if="passed_pipeline[index] != true && passed_pipeline[index].length<2" variant="primary" class="jobLink" @click="link_job(index)">Link</b-badge>
-				<b-badge v-if="(passed_pipeline[index][0] != true || passed_pipeline[index][1] != true) && passed_pipeline[index].length>1" variant="primary" class="jobLink" @click="link_job(index)">Link</b-badge>
+				<b-badge v-if="typeof(passed_pipeline[index])=='string' && passed_pipeline[index] != 'not'" variant="primary" class="jobLink" @click="link_job(index)">Link</b-badge>
+				<b-badge v-if="typeof(passed_pipeline[index])=='object' && (passed_pipeline[index][0] != 'not' || passed_pipeline[index][1] != 'not')" variant="primary" class="jobLink" @click="link_job(index)">Link</b-badge>
 			</div>
 			
 		</draggable>
 		<br><br><br><br><br>
-		{{passed_pipeline}}
 		<div class="addBoxSize">
 			<br><br>+
 		</div>
@@ -241,20 +240,19 @@ export default {
 	}else{
 		this.pipeline_yml=JSON.parse(localStorage.getItem("pipeline_json"));
 	}
-
+	console.log(this.pipeline_yml.jobs)
 	this.pipeline_jobs=this.pipeline_yml.jobs
 	this.pipeline_resources=this.pipeline_yml.resources
 	var beforePassed=''
 	//최초 세팅 정리
 	for(let i=0;i<this.pipeline_jobs.length;i++){
 		var plan = this.pipeline_jobs[i].plan[0]
-		this.passed_pipeline[i] = true
+		this.passed_pipeline[i] = 'not'
 		for(let j=0;j<plan.aggregate.length;j++){
-			
 			//passed 찾기
 			if(plan.aggregate[j].passed!=null){
 				if(beforePassed==plan.aggregate[j].passed[0]){
-					this.passed_pipeline[i-1] = [true,true]
+					this.passed_pipeline[i-1] = ['not','not']
 					this.pipeline_jobs[i-1] = [this.pipeline_jobs[i-1],this.pipeline_jobs[i]]
 					this.pipeline_jobs.splice(i,1)
 					i= i-1;
@@ -543,7 +541,12 @@ export default {
 			for(let i=0;i<this.passed_check.length;i++){
 				if(this.passed_check[i]==true){
 					var res = this.passed_pipeline[index][i]
-					this.pipeline_jobs[index].plan[0].aggregate[res]['passed'] = true
+					if(typeof(this.passed_pipeline[index-1][0])=='number'){
+						this.pipeline_jobs[index].plan[0].aggregate[res]['passed'] = [this.pipeline_jobs[index-1].name]
+					}
+					else{
+						this.pipeline_jobs[index].plan[0].aggregate[res]['passed'] = ['close']
+					}
 				}
 			}
 			for(let i=0;i<this.trigger_check.length;i++){
@@ -559,7 +562,7 @@ export default {
 				item.forEach(function(item2, idx2){
 					if(item2==true){
 						var res = self.passed_pipeline[index][idx][idx2]
-						self.pipeline_jobs[index][idx].plan[0].aggregate[res]['passed'] = true
+						self.pipeline_jobs[index][idx].plan[0].aggregate[res]['passed'] = [self.pipeline_jobs[index-1].name]
 					}
 				})
 			})
@@ -576,9 +579,9 @@ export default {
 
 		//링크라고 표시버튼 지워주는부분
 		if(typeof(this.passed_pipeline[index][0])=='number'){
-			this.passed_pipeline[index]=true
+			this.passed_pipeline[index]='not'
 		}else{
-			this.passed_pipeline[index]=[true,true]
+			this.passed_pipeline[index]=['not','not']
 		}
 		this.link_dialog=false;
 		this.passed_check=[]
