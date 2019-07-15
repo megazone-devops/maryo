@@ -6,14 +6,14 @@
 			RESOURCES
 		</h1>
 		<h2>
-			<b-badge variant="success" class="resourcePosition" v-for="(item, index) in pipeline_resources" :key="index" :item="item" @click="resource_info(index)">{{item.name}}</b-badge>
+			<b-badge variant="success" class="resourcePosition" v-for="(item, index) in pipeline_resources" :key="index" style="cursor:pointer;" :item="item" @click="resource_info(index)">{{item.name}}</b-badge>
 		</h2>
 		<!-- pipeline 부분 -->
 		<h1 class="topGrayLine"> 
 			PIPE LINE
 		</h1>
 		<draggable v-model="pipeline_jobs" ghost-class="ghost" group="pipeline" :move="checkMove" @start="drag=true" @end="drag=false">
-			<div v-for="(item,index) in pipeline_jobs" :key="index" style="float:left;position:relative;" @mouseover="job_mouseover(index)" @mouseleave="job_mouseleave(index)">
+			<div v-for="(item,index) in pipeline_jobs" :key="index" style="float:left;position:relative;cursor:pointer;" @mouseover="job_mouseover(index)" @mouseleave="job_mouseleave(index)" >
 				<div v-if="item.length>1">
 					<div style="width:140px;height:50px">
 						<div v-if="index!=0" class="splitLineSize" :style="passed_pipeline[index][0]=='not'? 'border:3px solid green;':'border:3px solid red;'">
@@ -447,14 +447,24 @@ export default {
 				}
 			}
 		}
+		
 		resource_another = resource_another.reduce(function(a,b){if(a.indexOf(b)<0)a.push(b);return a;},[]);
-		// console.log(resource_arr)
-		// console.log(resource_another)
+		
+		var delete_arr = []
 		for(let i=0;i<resource_arr.length;i++){
 			for(let j=0;j<resource_another.length;j++){
-				if(resource_arr[i]==resource_another[j])
-					resource_arr.splice(i,1)
+				console.log(resource_arr[i]+ "===="+ resource_another[j])
+				if(resource_arr[i]==resource_another[j]){
+					console.log(resource_arr[i]+ "===-----="+ resource_another[j])
+					delete_arr.push(i)			
+					break;
+				}
+					
 			}
+		}
+		//중복 삭제 부분
+		for(let i=delete_arr.length-1; i>=0;i--){
+			resource_arr.splice(delete_arr[i],1)	
 		}
 		// console.log(resource_arr)
 		//중복없는 resource 제거
