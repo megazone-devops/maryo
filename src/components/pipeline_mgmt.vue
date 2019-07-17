@@ -453,9 +453,7 @@ export default {
 		var delete_arr = []
 		for(let i=0;i<resource_arr.length;i++){
 			for(let j=0;j<resource_another.length;j++){
-				console.log(resource_arr[i]+ "===="+ resource_another[j])
 				if(resource_arr[i]==resource_another[j]){
-					console.log(resource_arr[i]+ "===-----="+ resource_another[j])
 					delete_arr.push(i)			
 					break;
 				}
@@ -478,7 +476,9 @@ export default {
 			}
 		}
 		console.log(this.pipeline_resources)
-
+		if(index==0){
+			this.remove_resource_link(index+1)
+		}
 		//resource 제거
 		this.passed_pipeline.splice(index,1)
 		this.pipeline_jobs.splice(index,1)
