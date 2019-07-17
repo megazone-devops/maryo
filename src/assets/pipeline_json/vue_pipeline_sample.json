@@ -1,6 +1,6 @@
 [
     {
-        "name": "test-develop",
+        "name": "build-test",
         "serial": true,
         "public": true,
         "plan": [
@@ -43,7 +43,7 @@
         ]
     },
     {
-        "name": "deploy-develop",
+        "name": "deploy",
         "serial": true,
         "public": false,
         "plan": [
