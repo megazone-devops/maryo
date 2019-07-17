@@ -453,7 +453,9 @@ export default {
 		var delete_arr = []
 		for(let i=0;i<resource_arr.length;i++){
 			for(let j=0;j<resource_another.length;j++){
+				console.log(resource_arr[i]+ "===="+ resource_another[j])
 				if(resource_arr[i]==resource_another[j]){
+					console.log(resource_arr[i]+ "===-----="+ resource_another[j])
 					delete_arr.push(i)			
 					break;
 				}
@@ -476,9 +478,7 @@ export default {
 			}
 		}
 		console.log(this.pipeline_resources)
-		if(index==0){
-			this.remove_resource_link(index+1)
-		}
+
 		//resource 제거
 		this.passed_pipeline.splice(index,1)
 		this.pipeline_jobs.splice(index,1)
@@ -544,14 +544,16 @@ export default {
 		this.passed_index=index;
 	},
 	save_pass(index){
-		console.log(this.passed_check)
-		// console.log(this.trigger_check)
+		console.log(typeof(this.passed_pipeline[index][0]))
 		//수정한대로 변경하는버튼
 		if(typeof(this.passed_pipeline[index][0])=='number'){
+			console.log(this.pipeline_jobs[index-1].name)
 			for(let i=0;i<this.passed_check.length;i++){
 				if(this.passed_check[i]==true){
-					var res = this.passed_pipeline[index][i]
-					if(typeof(this.passed_pipeline[index-1][0])=='number'){
+					var res = this.passed_pipeline[index][i];
+					console.log(typeof(this.passed_pipeline[index-1][0]))
+					if(typeof(this.passed_pipeline[index-1][0])=='number'||typeof(this.passed_pipeline[index-1][0])=='string'){
+						console.log("qqqqqq")
 						this.pipeline_jobs[index].plan[0].aggregate[res]['passed'] = [this.pipeline_jobs[index-1].name]
 					}
 					else{
@@ -567,6 +569,7 @@ export default {
 			}
 		}
 		else{
+			console.log("notsingle")
 			var self = this
 			this.passed_check_double.forEach(function(item,idx){
 				item.forEach(function(item2, idx2){
