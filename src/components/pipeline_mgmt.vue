@@ -41,8 +41,7 @@
 			</div>
 			
 		</draggable>
-		<br><br><br><br><br>
-		<div class="addBoxSize">
+		<div class="addBoxSize" @click="add_pipeline">
 			<br><br>+
 		</div>
 
@@ -240,30 +239,72 @@ export default {
 	}else{
 		this.pipeline_yml=JSON.parse(localStorage.getItem("pipeline_json"));
 	}
-	console.log(this.pipeline_yml.jobs)
+
 	this.pipeline_jobs=this.pipeline_yml.jobs
 	this.pipeline_resources=this.pipeline_yml.resources
-	var beforePassed=''
 	//최초 세팅 정리
-	for(let i=0;i<this.pipeline_jobs.length;i++){
-		var plan = this.pipeline_jobs[i].plan[0]
-		this.passed_pipeline[i] = 'not'
-		for(let j=0;j<plan.aggregate.length;j++){
-			//passed 찾기
-			if(plan.aggregate[j].passed!=null){
-				if(beforePassed==plan.aggregate[j].passed[0]){
-					this.passed_pipeline[i-1] = ['not','not']
-					this.pipeline_jobs[i-1] = [this.pipeline_jobs[i-1],this.pipeline_jobs[i]]
-					this.pipeline_jobs.splice(i,1)
-					i= i-1;
-				}else{
-					beforePassed=plan.aggregate[j].passed[0]
+	this.first_setting();
+
+	//add부분에서 넘어온 데이터가 있는지 체크 
+	if(this.$route.params.add_data){
+		var add_data = this.$route.params.add_data
+		//resource 중복검사 부분
+		for(let i=add_data.resources.length-1;i>=0;i--){
+			for(let j=0;j<this.pipeline_resources.length;j++){
+				if(add_data.resources[i].name==this.pipeline_resources[j].name){
+					add_data.resources.splice(i,1)
+					break;
+				}
+					
+			}
+		}
+		if(typeof(add_data.job[0])=='object'){
+			var front_name=''
+			if(typeof(this.pipeline_jobs[this.pipeline_jobs.length-1])=='object')
+				front_name='cloes'
+			else
+				front_name=this.pipeline_jobs[this.pipeline_jobs.length-1].name
+			for(let i=0;i<add_data.job.length;i++){
+				for(let j=0;j<add_data.job[i].plan[0].aggregate.length;j++){
+					if(add_data.job[i].plan[0].aggregate[j].get=='repo'){
+						add_data.job[i].plan[0].aggregate[j]['passed'] = [front_name]
+					}
 				}
 			}
-		}        
+		}
+		//job과 리소스추가부분
+		this.pipeline_jobs.push(add_data.job);
+		for(let i=0;i<add_data.resources.length;i++){
+			this.pipeline_resources.push(add_data.resources[i]);
+		}
+		//저장함수 호출
+		this.now_pipeline_save();	
+		this.first_setting();
+		// localStorage.setItem("pipeline_json", JSON.stringify(this.pipeline_yml));
 	}
   },
   methods: {
+	first_setting(){
+		var beforePassed=''
+	
+		for(let i=0;i<this.pipeline_jobs.length;i++){
+			var plan = this.pipeline_jobs[i].plan[0]
+			this.passed_pipeline[i] = 'not'
+			for(let j=0;j<plan.aggregate.length;j++){
+				//passed 찾기
+				if(plan.aggregate[j].passed!=null){
+					if(beforePassed==plan.aggregate[j].passed[0]){
+						this.passed_pipeline[i-1] = ['not','not']
+						this.pipeline_jobs[i-1] = [this.pipeline_jobs[i-1],this.pipeline_jobs[i]]
+						this.pipeline_jobs.splice(i,1)
+						i= i-1;
+					}else{
+						beforePassed=plan.aggregate[j].passed[0]
+					}
+				}
+			}        
+		}
+	},
 	boxCheck(index){
 		var temp=this.checkBox[index]
 		this.checkBox.splice(index, 1, !temp);
@@ -297,8 +338,7 @@ export default {
 		this.resource_info_dialog=true
 	},
 	exportYml(){
-		this.pipeline_yml.jobs = this.pipeline_jobs
-		this.pipeline_yml.resources = this.pipeline_resources
+		this.now_pipeline_save();
 		var qq = this.pipeline_yml
 		var self = this
 		console.log("rrrrr")
@@ -318,6 +358,15 @@ export default {
 		}());
 		// console.log("dddd")
 		// console.log(json2yaml(data));
+	},
+	now_pipeline_save(){
+		for(let i=0;i<this.pipeline_jobs.length;i++){
+			if(typeof(this.pipeline_jobs[i][0])=='object')
+				this.pipeline_jobs.splice(i,1,this.pipeline_jobs[i][0],this.pipeline_jobs[i][1])
+		}
+		this.pipeline_yml.jobs = this.pipeline_jobs
+		this.pipeline_yml.resources = this.pipeline_resources
+		localStorage.setItem("pipeline_json", JSON.stringify(this.pipeline_yml));
 	},
 	pipeline_passed_check(num,arr_position){
 			var before = []
@@ -453,9 +502,7 @@ export default {
 		var delete_arr = []
 		for(let i=0;i<resource_arr.length;i++){
 			for(let j=0;j<resource_another.length;j++){
-				console.log(resource_arr[i]+ "===="+ resource_another[j])
 				if(resource_arr[i]==resource_another[j]){
-					console.log(resource_arr[i]+ "===-----="+ resource_another[j])
 					delete_arr.push(i)			
 					break;
 				}
@@ -477,7 +524,6 @@ export default {
 					
 			}
 		}
-		console.log(this.pipeline_resources)
 
 		//resource 제거
 		this.passed_pipeline.splice(index,1)
@@ -602,6 +648,9 @@ export default {
 		this.passed_check_double=[[],[]]
 		this.trigger_check_double=[[],[]]
 	},
+	add_pipeline(){
+		this.$router.push({ name: 'add_pipeline'})
+	}
   }
 }
 </script>
@@ -626,7 +675,7 @@ export default {
 	width:100px;height:100px;border:1px solid black;float:left;text-align:center
 }
 .addBoxSize{
-	width:100px;height:100px;border:1px solid black; margin-left:20px;float:left;text-align:center
+	width:100px;height:100px;border:1px solid black; margin-left:20px;float:left;text-align:center;cursor:pointer
 }
 .ghost {
   opacity: 0.5;

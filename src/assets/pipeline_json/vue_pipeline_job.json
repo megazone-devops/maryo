@@ -1,0 +1,309 @@
+[
+    {
+        "name": "build_test",
+        "serial": true,
+        "public": true,
+        "plan": [
+            {
+                "aggregate": [
+                    {
+                        "get": "repo",
+                        "resource": "repo"
+                    }
+                ]
+            },
+            {
+                "task": "unit",
+                "config": {
+                    "platform": "linux",
+                    "image_resource": {
+                        "type": "docker-image",
+                        "source": {
+                            "repository": "node",
+                            "tag": "lts-alpine"
+                        }
+                    },
+                    "inputs": [
+                        {
+                            "name": "repo"
+                        }
+                    ],
+                    "run": {
+                        "path": "/bin/sh",
+                        "args": [
+                            "-c",
+                            ""
+                        ]
+                    }
+                },
+                "on_failure": {
+                    "put": "fail_api"
+                }
+            }
+        ]
+    },
+    {
+        "name": "build&deploy",
+        "serial": true,
+        "public": false,
+        "plan": [
+            {
+                "aggregate": [
+                    {
+                        "get": "repo",
+                        "resource": "repo"
+                    }
+                ]
+            },
+            {
+                "task": "build",
+                "config": {
+                    "platform": "linux",
+                    "image_resource": {
+                        "type": "docker-image",
+                        "source": {
+                            "repository": "node",
+                            "tag": "12.2.0-alpine"
+                        }
+                    },
+                    "inputs": [
+                        {
+                            "name": "repo"
+                        }
+                    ],
+                    "outputs": [
+                        {
+                            "name": "output"
+                        }
+                    ],
+                    "params": {
+                        "repo": "repo",
+                        "cf_org_dev": "((cf_org_dev))",
+                        "image_project": "((image_project_dev))",
+                        "image_name": "((wrapper_group_name))-((wrapper_project_code_lower))",
+                        "image_tag": "((ticket_version))"
+                    },
+                    "run": {
+                        "path": "/bin/sh",
+                        "args": [
+                            "-c",
+                            "cp -r $repo/* output\ncd $repo\nls -al ../output\ncat << EOF >> Dockerfile\nFROM node:lts-alpine\nRUN npm install -g http-server\nWORKDIR /app\nCOPY package*.json ./\nRUN npm i terser@4.0.0\nRUN npm install\nCOPY . .\nRUN npm run build -- --mode $cf_org_dev\nEXPOSE 8080\nCMD [ \"http-server\", \"dist\" ]\nEOF\nls ../output/\ncp Dockerfile ../output/Dockerfile\ncat <<EOF >> manifest.yml\napplications:\n- memory: 1024M\n docker:\n image: registry.mzdev.kr/$image_project/$image_name:$image_tag\n command: \nEOF\ncp manifest.yml ../output/\nls -al ../output/\n"
+                        ]
+                    }
+                },
+                "on_failure": {
+                    "put": "fail_api"
+                }
+            },
+            {
+                "put": "docker_registry",
+                "params": {
+                    "build": "output/"
+                },
+                "on_failure": {
+                    "put": "fail_api"
+                }
+            },
+            {
+                "put": "cf_api",
+                "params": {
+                    "manifest": "output/manifest.yml",
+                    "current_app_name": "((wrapper_group_name))-((wrapper_ticket_number))"
+                },
+                "on_success": {
+                    "put": "success_api"
+                },
+                "on_failure": {
+                    "put": "fail_api"
+                }
+            }
+        ]
+    },
+    {
+        "name": "pipline-pause",
+        "serial": true,
+        "public": true,
+        "plan": [
+            {
+                "aggregate": [
+                    {
+                        "get": "cf_api",
+                        "resource": "cf_api"
+                    },
+                    {
+                        "get": "repo",
+                        "resource": "repo"
+                    }
+                ]
+            }
+        ]
+    },
+    {
+        "name": "merge-to-git",
+        "public": true,
+        "plan": [
+            {
+                "aggregate": [
+                    {
+                        "get": "repo",
+                        "resource": "repo"
+                    },
+                    {
+                        "get": "repo-release",
+                        "resource": "target_repo"
+                    }
+                ]
+            },
+            {
+                "task": "merge-to-git",
+                "config": {
+                    "platform": "linux",
+                    "image_resource": {
+                        "type": "docker-image",
+                        "source": {
+                            "repository": "getourneau/alpine-bash-git"
+                        }
+                    },
+                    "inputs": [
+                        {
+                            "name": "from",
+                            "path": "repo"
+                        },
+                        {
+                            "name": "to",
+                            "path": "repo-target"
+                        }
+                    ],
+                    "outputs": [
+                        {
+                            "name": "out"
+                        }
+                    ],
+                    "run": {
+                        "path": "/bin/bash",
+                        "args": [
+                            "-c",
+                            "if [ \"$DEBUG\" = \"true\" ]; then\nset -x\nfi\ngit config --global user.email \"${GIT_EMAIL}\"\ngit config --global user.name \"${GIT_NAME}\"\ncd out\nshopt -s dotglob\nrm -rf *\nmv -f ../repo/* ./\nGIT_SSH_COMMAND=\"ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no\" git remote add -f repo-target ../repo-target\ngit merge -s ours \"repo-target/release\" -m \"$group-$code-$version merge to release\"\n"
+                        ]
+                    }
+                },
+                "input_mapping": {
+                    "from": "repo",
+                    "to": "repo-release"
+                },
+                "params": {
+                    "GIT_EMAIL": "((git_email))",
+                    "GIT_NAME": "((git_name))",
+                    "group": "((wrapper_group_name))",
+                    "code": "((wrapper_project_code))",
+                    "version": "((ticket_version))"
+                },
+                "on_failure": {
+                    "put": "fail_api"
+                }
+            },
+            {
+                "put": "repo",
+                "resource": "repo-release",
+                "params": {
+                    "repository": "out"
+                },
+                "on_failure": {
+                    "put": "fail_api"
+                }
+            }
+        ]
+    },
+    [
+        {
+            "name": "roll-back",
+            "serial": true,
+            "public": true,
+            "plan": [
+                {
+                    "aggregate": [
+                        {
+                            "get": "repo",
+                            "resource": "target_repo"
+                        },
+                        {
+                            "get": "docker-registry-rollback",
+                            "resource": "docker_registry_rollback",
+                            "trigger": false
+                        }
+                    ]
+                },
+                {
+                    "task": "build",
+                    "config": {
+                        "platform": "linux",
+                        "image_resource": {
+                            "type": "docker-image",
+                            "source": {
+                                "repository": "node",
+                                "tag": "12.2.0-alpine"
+                            }
+                        },
+                        "inputs": [
+                            {
+                                "name": "repo"
+                            }
+                        ],
+                        "outputs": [
+                            {
+                                "name": "output"
+                            }
+                        ],
+                        "params": {
+                            "image_project": "((image_project_rel))",
+                            "image_name": "((wrapper_group_name))-((wrapper_project_code_lower))",
+                            "image_tag": "((rollback_version))"
+                        },
+                        "run": {
+                            "path": "/bin/sh",
+                            "args": [
+                                "-c",
+                                "cd repo\ncat <<EOF >> manifest.yml\napplications:\n- memory: 1024M\n docker:\n image: registry.mzdev.kr/$image_project/$image_name:$image_tag\n command: \nEOF\ncp manifest.yml ../output/\nls ../output/\n"
+                            ]
+                        }
+                    },
+                    "on_failure": {
+                        "put": "fail_api"
+                    }
+                },
+                {
+                    "put": "docker_registry_rollback",
+                    "params": {
+                        "manifest": "output/manifest.yml",
+                        "current_app_name": "((wrapper_group_name))-((wrapper_project_code))"
+                    },
+                    "on_success": {
+                        "put": "success_api"
+                    },
+                    "on_failure": {
+                        "put": "fail_api"
+                    }
+                }
+            ]
+        },
+        {
+            "name": "close",
+            "serial": true,
+            "public": true,
+            "plan": [
+                {
+                    "aggregate": [
+                        {
+                            "get": "repo",
+                            "resource": "repo"
+                        },
+                        {
+                            "get": "cf-prod",
+                            "resource": "cf_api"
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
+]
