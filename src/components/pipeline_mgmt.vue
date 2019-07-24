@@ -105,15 +105,15 @@
 		<!-- job info 다이얼로그 끝 -->
 
 		<!-- resource info 다이얼로그 -->
-		<b-modal v-model="resource_info_dialog" title="Resource" ok-only>
-			<div v-for="item in Object.keys(pipeline_resources[now_resource_index])">
-				<div v-if="typeof(pipeline_resources[now_resource_index][item])!='object'">
-					<h3>{{item}} :</h3><b-form-input :value="pipeline_resources[now_resource_index][item]" disabled></b-form-input>
+		<b-modal v-model="resource_info_dialog" title="Resource" ok-only :ok="change_resource()">
+			<div v-for="item in Object.keys(resource_backup)">
+				<div v-if="typeof(resource_backup[item])!='object'">
+					<h3>{{item}} :</h3><b-form-input v-model="resource_backup[item]"></b-form-input>
 				</div>
 				<div v-else>
 					<h3>{{item}} : </h3>
-					<div v-for="item2 in Object.keys(pipeline_resources[now_resource_index][item])">
-					<h4>&nbsp;&nbsp;&nbsp;&nbsp;{{item2}} :</h4><b-form-input :value="pipeline_resources[now_resource_index][item][item2]" disabled></b-form-input>
+					<div v-for="item2 in Object.keys(resource_backup[item])">
+					<h4>&nbsp;&nbsp;&nbsp;&nbsp;{{item2}} :</h4><b-form-input v-model="resource_backup[item][item2]"></b-form-input>
 					</div>
 				</div>
 			</div>
@@ -175,6 +175,7 @@ export default {
 	  name_dialog:false,
 	  resource_info_dialog:false,
 	  pipeline_info_dialog:false,
+	  resource_backup:'',
 	  link_dialog:false,
 	  now_pipeline_index:0,
 	  now_resource_index:0,
@@ -334,8 +335,12 @@ export default {
 		this.pipeline_info_dialog=true
 	},
 	resource_info(index){
-		this.now_resource_index=index	
+		this.now_resource_index=index
+		this.resource_backup = JSON.parse(JSON.stringify(this.pipeline_resources[this.now_resource_index]));	
 		this.resource_info_dialog=true
+	},
+	change_resource(){
+		this.pipeline_resources[this.now_resource_index] = this.resource_backup
 	},
 	exportYml(){
 		this.now_pipeline_save();
