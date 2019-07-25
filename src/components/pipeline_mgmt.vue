@@ -658,6 +658,7 @@ export default {
 		this.trigger_check_double=[[],[]]
 	},
 	add_pipeline(){
+		this.now_pipeline_save();
 		this.$router.push({ name: 'add_pipeline'})
 	}
   }
