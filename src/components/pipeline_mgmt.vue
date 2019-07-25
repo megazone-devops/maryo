@@ -44,7 +44,6 @@
 		<div class="addBoxSize" @click="add_pipeline">
 			<br><br>+
 		</div>
-
 		<!-- 버튼부분 -->
 		<button type="button" class="btn btn-primary" @click="exportYml" style="float:right;">export data</button>
 		<!-- job info 다이얼로그 -->
@@ -105,7 +104,7 @@
 		<!-- job info 다이얼로그 끝 -->
 
 		<!-- resource info 다이얼로그 -->
-		<b-modal v-model="resource_info_dialog" title="Resource" ok-only :ok="change_resource()">
+		<b-modal v-model="resource_info_dialog" title="Resource" hide-footer>
 			<div v-for="item in Object.keys(resource_backup)">
 				<div v-if="typeof(resource_backup[item])!='object'">
 					<h3>{{item}} :</h3><b-form-input v-model="resource_backup[item]"></b-form-input>
@@ -117,6 +116,7 @@
 					</div>
 				</div>
 			</div>
+			<b-button class="mt-2" variant="outline-success" block @click="change_resource()">SAVE</b-button>
 		</b-modal>
 		<!-- resource info 다이얼로그 끝-->
 
@@ -231,7 +231,7 @@ export default {
 			//passed가 필요하지 않은지
 
 		}
-	  }
+	  },
   },
   created(){
 	if(this.$route.params.pipeline_yml){
@@ -340,7 +340,11 @@ export default {
 		this.resource_info_dialog=true
 	},
 	change_resource(){
-		this.pipeline_resources[this.now_resource_index] = this.resource_backup
+		this.pipeline_resources[this.now_resource_index] = JSON.parse(JSON.stringify(this.resource_backup));
+		this.resource_info_dialog= false;
+	},
+	change_resourceeqqqe(){
+		var a =1
 	},
 	exportYml(){
 		this.now_pipeline_save();
@@ -654,6 +658,7 @@ export default {
 		this.trigger_check_double=[[],[]]
 	},
 	add_pipeline(){
+		this.now_pipeline_save();
 		this.$router.push({ name: 'add_pipeline'})
 	}
   }
