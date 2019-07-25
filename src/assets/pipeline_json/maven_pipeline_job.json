@@ -1,0 +1,398 @@
+[
+    {
+        "name": "test",
+        "serial": true,
+        "public": true,
+        "plan": [
+            {
+                "aggregate": [
+                    {
+                        "get": "repo",
+                        "resource": "repo"
+                    },
+                    {
+                        "get": "m2",
+                        "resource": "m2"
+                    },
+                    {
+                        "get": "mvnw",
+                        "resource": "mvnw"
+                    }
+                ]
+            },
+            {
+                "task": "unit",
+                "config": {
+                    "platform": "linux",
+                    "image_resource": {
+                        "type": "docker-image",
+                        "source": {
+                            "repository": "java",
+                            "tag": "8-jdk-alpine"
+                        }
+                    },
+                    "inputs": [
+                        {
+                            "name": "repo"
+                        },
+                        {
+                            "name": "m2"
+                        },
+                        {
+                            "name": "mvnw"
+                        }
+                    ],
+                    "params": {
+                        "nexus_id": "((nexus_id))",
+                        "nexus_pwd": "((nexus_pw))"
+                    },
+                    "run": {
+                        "path": "/bin/sh",
+                        "args": [
+                            "-c",
+                            "cp -a mvnw/* ./repo/\ncp -a mvnw/.mvn ./repo/\ncd repo\ncat << EOF >> settings.xml\n<settings xmlns=\"http://maven.apache.org/SETTINGS/1.0.0\"\n xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\"\n xsi:schemaLocation=\"http://maven.apache.org/SETTINGS/1.0.0\n https://maven.apache.org/xsd/settings-1.0.0.xsd\">\n <servers>\n <server>\n <id>nexus</id>\n <username>$nexus_id</username>\n <password>$nexus_pw</password>\n </server>\n <server>\n <id>nexus-snapshots</id>\n <username>$nexus_id</username>\n <password>$nexus_pw</password>\n </server>\n </servers>\n <mirrors>\n <mirror>\n <id>central</id>\n <url>http://lib.mzdev.kr/repository/maven-central/</url>\n <mirrorOf>central</mirrorOf>\n </mirror>\n </mirrors>\n <profiles>\n <profile>\n <id>nexus</id>\n <repositories>\n <repository>\n <id>devops</id>\n <url>http://lib.mzdev.kr/repository/devops-public/</url>\n </repository>\n </repositories>\n </profile>\n </profiles>\n\n <activeProfiles>\n <activeProfile>nexus</activeProfile>\n </activeProfiles>\n</settings>\nEOF\n./mvnw --settings settings.xml test -Dmaven.test.skip=true -Dmaven.repo.local=../m2/rootfs/opt/m2\n"
+                        ]
+                    }
+                },
+                "on_failure": {
+                    "put": "fail_api"
+                }
+            }
+        ]
+    },
+    {
+        "name": "build-img",
+        "serial": true,
+        "public": true,
+        "plan": [
+            {
+                "aggregate": [
+                    {
+                        "get": "m2",
+                        "resource": "m2"
+                    },
+                    {
+                        "get": "mvnw",
+                        "resource": "mvnw"
+                    },
+                    {
+                        "get": "repo",
+                        "resource": "repo"
+                    }
+                ]
+            },
+            {
+                "task": "build-img",
+                "config": {
+                    "platform": "linux",
+                    "image_resource": {
+                        "type": "docker-image",
+                        "source": {
+                            "repository": "java",
+                            "tag": "8-jdk-alpine"
+                        }
+                    },
+                    "inputs": [
+                        {
+                            "name": "repo"
+                        },
+                        {
+                            "name": "m2"
+                        },
+                        {
+                            "name": "mvnw"
+                        }
+                    ],
+                    "outputs": [
+                        {
+                            "name": "output"
+                        }
+                    ],
+                    "params": {
+                        "group": "((wrapper_group_name))",
+                        "repo": "repo",
+                        "code": "((wrapper_project_code))",
+                        "version": "((ticket_version))",
+                        "nexus_id": "((nexus_id))",
+                        "nexus_pw": "((nexus_pw))"
+                    },
+                    "run": {
+                        "path": "/bin/sh",
+                        "args": [
+                            "-c",
+                            "cp -a mvnw/* ./$repo/\ncp -a mvnw/.mvn ./$repo/\ncd $repo\ncat << EOF >> settings.xml\n<settings xmlns=\"http://maven.apache.org/SETTINGS/1.0.0\"\n xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\"\n xsi:schemaLocation=\"http://maven.apache.org/SETTINGS/1.0.0\n https://maven.apache.org/xsd/settings-1.0.0.xsd\">\n <servers>\n <server>\n <id>nexus</id>\n <username>$nexus_id</username>\n <password>$nexus_pw</password>\n </server>\n <server>\n <id>nexus-snapshots</id>\n <username>$nexus_id</username>\n <password>$nexus_pw</password>\n </server>\n </servers>\n <mirrors>\n <mirror>\n <id>central</id>\n <url>http://lib.mzdev.kr/repository/maven-central/</url>\n <mirrorOf>central</mirrorOf>\n </mirror>\n </mirrors>\n <profiles>\n <profile>\n <id>nexus</id>\n <repositories>\n <repository>\n <id>devops</id>\n <url>http://lib.mzdev.kr/repository/devops-public/</url>\n </repository>\n </repositories>\n </profile>\n </profiles>\n\n <activeProfiles>\n <activeProfile>nexus</activeProfile>\n </activeProfiles>\n</settings>\nEOF\n./mvnw --settings settings.xml install -Dmaven.test.skip=true -Dmaven.repo.local=../m2/rootfs/opt/m2\nmv target/*.jar ../output/app.jar\ncp Dockerfile ../output/Dockerfile\nls -al ../output\n"
+                        ]
+                    }
+                },
+                "on_failure": {
+                    "put": "fail_api"
+                }
+            },
+            {
+                "put": "docker_registry",
+                "params": {
+                    "build": "output/"
+                },
+                "on_failure": {
+                    "put": "fail_api"
+                }
+            }
+        ]
+    },
+    {
+        "name": "deploy",
+        "serial": true,
+        "public": false,
+        "plan": [
+            {
+                "aggregate": [
+                    {
+                        "get": "docker-registry",
+                        "resource": "docker-registry"
+                    },
+                    {
+                        "get": "repo",
+                        "resource": "repo"
+                    }
+                ]
+            },
+            {
+                "task": "make-manifest",
+                "config": {
+                    "platform": "linux",
+                    "inputs": [
+                        {
+                            "name": "from",
+                            "path": "repo"
+                        }
+                    ],
+                    "outputs": [
+                        {
+                            "name": "out"
+                        }
+                    ],
+                    "image_resource": {
+                        "type": "docker-image",
+                        "source": {
+                            "repository": "getourneau/alpine-bash-git"
+                        }
+                    },
+                    "run": {
+                        "path": "/bin/bash",
+                        "args": [
+                            "-c",
+                            "cd repo\ncat manifest.yml\ncat manifest.yml | sed 's/IMAGE_PROJECT/'\"$image_project\"'/g' \\\n| sed 's/IMAGE_NAME/'\"$image_name\"'/g' \\\n| sed 's/IMAGE_TAG/'\"$image_tag\"'/g' \\\n| sed 's/RUNTIME_OPTIONS/'\"$runtime_options\"'/g' > manifest_new.yml\ncat manifest_new.yml\nmv manifest_new.yml ../out/manifest.yml\n"
+                        ]
+                    }
+                },
+                "input_mapping": {
+                    "from": "repo"
+                },
+                "params": {
+                    "image_project": "((image_project_dev))",
+                    "image_name": "((wrapper_group_name))-((wrapper_project_code_lower))",
+                    "image_tag": "((ticket_version))",
+                    "runtime_options": "((java_opts_dev))"
+                }
+            },
+            {
+                "put": "cf-api",
+                "params": {
+                    "manifest": "out/manifest.yml",
+                    "current_app_name": "((wrapper_group_name))-((wrapper_ticket_number))"
+                },
+                "on_success": {
+                    "put": "success_api"
+                },
+                "on_failure": {
+                    "put": "fail_api"
+                }
+            }
+        ]
+    },
+    {
+        "name": "pipeline-pause",
+        "serial": true,
+        "public": true,
+        "plan": [
+            {
+                "aggregate": [
+                    {
+                        "get": "cf_api",
+                        "resource": "cf_api"
+                    },
+                    {
+                        "get": "repo",
+                        "resource": "repo"
+                    }
+                ]
+            }
+        ]
+    },
+    {
+        "name": "merge-to-git",
+        "public": true,
+        "plan": [
+            {
+                "aggregate": [
+                    {
+                        "get": "repo",
+                        "resource": "repo"
+                    },
+                    {
+                        "get": "repo-release",
+                        "resource": "target_repo"
+                    }
+                ]
+            },
+            {
+                "task": "merge-to-git",
+                "config": {
+                    "platform": "linux",
+                    "image_resource": {
+                        "type": "docker-image",
+                        "source": {
+                            "repository": "getourneau/alpine-bash-git"
+                        }
+                    },
+                    "inputs": [
+                        {
+                            "name": "from",
+                            "path": "repo"
+                        },
+                        {
+                            "name": "to",
+                            "path": "repo-target"
+                        }
+                    ],
+                    "outputs": [
+                        {
+                            "name": "out"
+                        }
+                    ],
+                    "run": {
+                        "path": "/bin/bash",
+                        "args": [
+                            "-c",
+                            "if [ \"$DEBUG\" = \"true\" ]; then\nset -x\nfi\ngit config --global user.email \"${GIT_EMAIL}\"\ngit config --global user.name \"${GIT_NAME}\"\ncd out\nshopt -s dotglob\nrm -rf *\nmv -f ../repo/* ./\nGIT_SSH_COMMAND=\"ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no\" git remote add -f repo-target ../repo-target\ngit merge -s ours \"repo-target/release\" -m \"$group-$code-$version merge to release\"\n"
+                        ]
+                    }
+                },
+                "input_mapping": {
+                    "from": "repo",
+                    "to": "repo-release"
+                },
+                "params": {
+                    "GIT_EMAIL": "((git_email))",
+                    "GIT_NAME": "((git_name))",
+                    "group": "((wrapper_group_name))",
+                    "code": "((wrapper_project_code))",
+                    "version": "((ticket_version))"
+                }
+            },
+            {
+                "put": "repo",
+                "resource": "target_repo",
+                "params": {
+                    "repository": "out"
+                },
+                "on_failure": {
+                    "put": "fail_api"
+                }
+            }
+        ]
+    },
+    [
+        {
+            "name": "roll-back",
+            "serial": true,
+            "public": true,
+            "plan": [
+                {
+                    "aggregate": [
+                        {
+                            "get": "repo",
+                            "resource": "target_repo"
+                        },
+                        {
+                            "get": "docker-registry-rollback",
+                            "resource": "docker_registry_rollback"
+                        }
+                    ]
+                },
+                {
+                    "task": "make-manifest",
+                    "config": {
+                        "platform": "linux",
+                        "inputs": [
+                            {
+                                "name": "from",
+                                "path": "target_repo"
+                            }
+                        ],
+                        "outputs": [
+                            {
+                                "name": "out"
+                            }
+                        ],
+                        "image_resource": {
+                            "type": "docker-image",
+                            "source": {
+                                "repository": "getourneau/alpine-bash-git"
+                            }
+                        },
+                        "run": {
+                            "path": "/bin/bash",
+                            "args": [
+                                "-c",
+                                "cd $git_directory\ncat manifest.yml\ncat manifest.yml | sed 's/IMAGE_PROJECT/'\"$image_project\"'/g' \\\n| sed 's/IMAGE_NAME/'\"$image_name\"'/g' \\\n| sed 's/IMAGE_TAG/'\"$image_tag\"'/g' \\\n| sed 's/RUNTIME_OPTIONS/'\"$runtime_options\"'/g' > manifest_new.yml\ncat manifest_new.yml\nmv manifest_new.yml ../out/manifest.yml\n"
+                            ]
+                        }
+                    },
+                    "input_mapping": {
+                        "from": "target_repo"
+                    },
+                    "params": {
+                        "git_directory": "target_repo",
+                        "image_project": "((image_project_rel))",
+                        "image_name": "((wrapper_group_name))-((wrapper_project_code_lower))",
+                        "image_tag": "((rollback_ticket_version))",
+                        "runtime_options": "((java_opts_prd))"
+                    }
+                },
+                {
+                    "put": "cf-api",
+                    "params": {
+                        "manifest": "out/manifest.yml",
+                        "current_app_name": "((wrapper_group_name))-((wrapper_project_code))"
+                    },
+                    "on_success": {
+                        "put": "success_api"
+                    },
+                    "on_failure": {
+                        "put": "fail_api"
+                    }
+                }
+            ]
+        },
+        {
+            "name": "close",
+            "serial": true,
+            "public": true,
+            "plan": [
+                {
+                    "aggregate": [
+                        {
+                            "get": "repo",
+                            "resource": "target_repo"
+                        },
+                        {
+                            "get": "cf-api",
+                            "resource": "cf-api"
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
+]

@@ -1,11 +1,11 @@
 <template>
 	<div>
 		<b-button @click="pipeline_type='vue'" :variant="pipeline_type=='vue'? 'success':'outline-success'">Vue</b-button>&nbsp
-		<b-button @click="pipeline_type='spring'" :variant="pipeline_type=='spring'? 'success':'outline-success'">Spring</b-button>&nbsp
+		<b-button @click="pipeline_type='maven'" :variant="pipeline_type=='maven'? 'success':'outline-success'">Maven</b-button>&nbsp
 		<b-button @click="pipeline_type='go'" :variant="pipeline_type=='go'? 'success':'outline-success'">Go</b-button>&nbsp
 		<b-button @click="pipeline_type='python'" :variant="pipeline_type=='python'? 'success':'outline-success'">Python</b-button>
 		<br><br>
-		<b-button v-b-toggle.collapse-1 variant="success" v-if="pipeline_type=='vue'" v-for="(item,index) in show_data" :key="index" style="margin-right:15px;" @click="job_name_setting(index)">
+		<b-button v-b-toggle.collapse-1 variant="success" v-for="(item,index) in show_data" :key="index" style="margin-right:15px;" @click="job_name_setting(index)">
 			{{typeof(item[0])=='object'? 'Roll-back&close':item.name}}
 		</b-button>
 
@@ -29,6 +29,8 @@
 <script>
 import vue_pipeline_job from '../assets/pipeline_json/vue_pipeline_job.json'
 import vue_pipeline_resource from '../assets/pipeline_json/vue_pipeline_resource.json'
+import maven_pipeline_job from '../assets/pipeline_json/maven_pipeline_job.json'
+import maven_pipeline_resource from '../assets/pipeline_json/maven_pipeline_resource.json'
 export default {
 	name: 'show_pipeline',
 	data() {
@@ -38,6 +40,8 @@ export default {
 			show_resource:'',
 			vue_pipeline_job:vue_pipeline_job,
 			vue_pipeline_resource:vue_pipeline_resource,
+			maven_pipeline_job:maven_pipeline_job,
+			maven_pipeline_resource:maven_pipeline_resource,
 			need_resource:[],
 			resrouce_names:[],
 			send_data:'',
@@ -55,11 +59,19 @@ export default {
 	},
 	watch:{
 		pipeline_type(){
-			if(this.show_data=='vue'){
+			if(this.pipeline_type=='vue'){
 				this.show_data=this.vue_pipeline_job
 				this.show_resource=this.vue_pipeline_resource
 			}
-				
+			else if(this.pipeline_type=='maven'){
+				console.log("rrrr")
+				this.show_data=this.maven_pipeline_job
+				this.show_resource=this.maven_pipeline_resource
+			}
+			else{
+				this.show_data=''
+				this.show_resource=''
+			}
 			// else if(this.show_data=='spring')
 			// 	this.show_data=this.vue_pipeline_sample
 		},
@@ -138,7 +150,8 @@ export default {
 			this.resource_setting(this.send_data);
 		},
 		resource_ok(){
-			var temp = this.send_data
+			var temp = JSON.parse(JSON.stringify(this.send_data));
+			var temp_resource = JSON.parse(JSON.stringify(this.show_resource));
 			var self=this
 			//job에 있는 리소스 네임 수정하는부분
 			if(typeof(temp[0])=='object'){
@@ -264,22 +277,27 @@ export default {
 			}
 			var resource_temp=[]
 			//resource의 네임을 수정한 후 불러오는 부분
+			console.log('qqqweqweqweqwe')
 			console.log(this.need_resource)
-			for(let i=0;i<this.show_resource.length;i++){
+			for(let i=0;i<temp_resource.length;i++){
 				this.need_resource.forEach(function(item,idx){
-					if(self.show_resource[i].name == item){
-						self.show_resource[i].name = self.resrouce_names[idx]
-						resource_temp.push(self.show_resource[i])
+					console.log(temp_resource[i].name +  ' === ' + item)
+					if(temp_resource[i].name == item){
+						temp_resource[i].name = self.resrouce_names[idx]
+						resource_temp.push(temp_resource[i])
 					}
 
 				})
 			}
+			
 			console.log(resource_temp)
 			var add_data ={
 				job:temp,
 				resources:resource_temp
 			}
-			
+			this.need_resource=[]
+			this.temp_resource=''
+			temp=''
 
 			this.$router.push({ name: 'pipeline_mgmt', params: { add_data: add_data }})
 		}
