@@ -16,12 +16,12 @@
 			<div v-for="(item,index) in pipeline_jobs" :key="index" style="float:left;position:relative;cursor:pointer;" @mouseover="job_mouseover(index)" @mouseleave="job_mouseleave(index)" >
 				<div v-if="item.length>1">
 					<div style="width:140px;height:50px">
-						<div v-if="index!=0" class="splitLineSize" :style="passed_pipeline[index][0]=='not'? 'border:3px solid green;':'border:3px solid red;'">
+						<div v-if="index!=0" class="splitLineSize" :style="passed_pipeline[index][0]=='not'? 'border:3px solid green;':'border:3px solid green;'">
 						</div>
 						<div class="splitBoxSize" @click="showInfo(index)">
 						<br>{{item[0].name}}
 						</div>
-						<div v-if="index!=0" class="splitLineSize" :style="passed_pipeline[index][1]=='not'? 'border:3px solid green;':'border:3px solid red;'">
+						<div v-if="index!=0" class="splitLineSize" :style="passed_pipeline[index][1]=='not'? 'border:3px solid green;':'border:3px solid green;'">
 						</div>
 						<div class="splitBoxSize" @click="showInfo(index)">
 							<br>{{item[1].name}}
@@ -29,7 +29,7 @@
 					</div>
 					</div>
 				<div v-else>
-					<div v-if="index!=0" class="fullLineSize" :style="passed_pipeline[index]=='not'? 'border:3px solid green;':'border:3px solid red;'">
+					<div v-if="index!=0" class="fullLineSize" :style="passed_pipeline[index]=='not'? 'border:3px solid green;':'border:3px solid green;'">
 					</div>
 					<div class="fullBoxSize"  @click="showInfo(index)">
 						<br>{{item.name}}

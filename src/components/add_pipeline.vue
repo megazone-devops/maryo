@@ -277,8 +277,6 @@ export default {
 			}
 			var resource_temp=[]
 			//resource의 네임을 수정한 후 불러오는 부분
-			console.log('qqqweqweqweqwe')
-			console.log(this.need_resource)
 			for(let i=0;i<temp_resource.length;i++){
 				this.need_resource.forEach(function(item,idx){
 					console.log(temp_resource[i].name +  ' === ' + item)
