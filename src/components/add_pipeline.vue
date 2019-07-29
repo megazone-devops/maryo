@@ -10,17 +10,19 @@
 		</b-button>
 
 		<!-- name setting 다이얼로그 -->
-		<b-modal v-model="name_setting_dialog" title="Job Name Setting" @ok="name_ok">
+		<b-modal v-model="name_setting_dialog" title="Job Name Setting" hide-footer>
 			<h3>Job Name</h3>
 			<b-form-input v-model="job_name"></b-form-input>
+			<b-button class="mt-2" variant="outline-success" block @click="name_ok">OK</b-button>
 		</b-modal>
 		<!-- name setting 다이얼로그 끝-->
 		<!-- resource setting 다이얼로그 -->
-		<b-modal v-model="resource_setting_dialog" title="Resource Name Setting" @ok="resource_ok">
+		<b-modal v-model="resource_setting_dialog" title="Resource Name Setting" hide-footer>
 			<div v-for="(item,index) in need_resource" :key="index">
 				<h3>{{item}}</h3>
 				<b-form-input v-model="resrouce_names[index]"></b-form-input>
 			</div>
+				<b-button class="mt-2" variant="outline-success" block @click="resource_check">OK</b-button>
 		</b-modal>
 		<!-- resource setting 다이얼로그 끝-->
 	</div>
@@ -84,6 +86,7 @@ export default {
 		},
 		resource_setting(temp){
 			//고쳐야할 리소스 찾는부분
+			this.need_resource=[]
 			if(typeof(temp[0])=='object'){
 				for(let k=0;k<temp.length;k++){
 					var temp2=temp[k]
@@ -148,6 +151,18 @@ export default {
 				this.send_data.name = this.job_name
 			}
 			this.resource_setting(this.send_data);
+		},
+		resource_check(){
+			for(var i = 0; i < this.resrouce_names.length; i++){
+				for(var j = i+1; j < this.resrouce_names.length ; j++){
+					if(this.resrouce_names[i] == this.resrouce_names[j]){
+						alert("resource name에 중복되는 값이 있습니다");
+						return false;
+						break
+					}
+				}
+			}
+			this.resource_ok();
 		},
 		resource_ok(){
 			var temp = JSON.parse(JSON.stringify(this.send_data));

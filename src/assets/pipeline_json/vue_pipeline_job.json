@@ -204,7 +204,7 @@
             },
             {
                 "put": "repo",
-                "resource": "repo-release",
+                "resource": "target_repo",
                 "params": {
                     "repository": "out"
                 },
