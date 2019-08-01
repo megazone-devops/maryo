@@ -47,37 +47,54 @@
 		<!-- 버튼부분 -->
 		<button type="button" class="btn btn-primary" @click="exportYml" style="float:right;">export data</button>
 		<!-- job info 다이얼로그 -->
-		<b-modal v-model="pipeline_info_dialog" title="Job" ok-only>
-			<div v-if="pipeline_jobs[now_pipeline_index].name != null">
-				<h1>{{pipeline_jobs[now_pipeline_index].name}}</h1>
+		<b-modal v-model="pipeline_info_dialog" title="Job" hide-footer>
+			<div v-if="job_backup.name != null">
+				<h1>{{job_backup.name}}</h1>
 				<h2>Aggregate</h2>
 				<h3>
-					<b-badge variant="success" v-for="item in pipeline_jobs[now_pipeline_index].plan[0].aggregate" :key="item.get" style="margin-right:15px;">{{item.get}} : {{item}}</b-badge>
+					<div v-for="item in job_backup.plan[0].aggregate" :key="item.get">
+						<b-badge variant="success"  style="margin-right:15px;">{{item.get}} : {{item.resource}}</b-badge>
+						<br>
+						<b-form-checkbox v-if="item.passed!=null" v-model="item.passed" name="check-button" switch>
+							<b>Passed: {{ item.passed!=null? item.passed: 'false'}} {{item.passed}}</b>
+						</b-form-checkbox>
+						<b-form-checkbox v-model="item.trigger" name="check-button" switch>
+							<b>Trigger: {{ item.trigger!=null? item.trigger : 'false'}}</b>
+						</b-form-checkbox>
+					</div>
 				</h3>
-				<div v-if="pipeline_jobs[now_pipeline_index].plan.length>1">
+				<div v-if="job_backup.plan.length>1">
 				<h2>Image resource</h2>
 				<h3>
-					<b-badge variant="success" v-if="pipeline_jobs[now_pipeline_index].plan[1].config.image_resource.type" style="margin-right:15px;">type : {{pipeline_jobs[now_pipeline_index].plan[1].config.image_resource.type}}</b-badge>
-					<b-badge variant="success" v-for="source in Object.keys(pipeline_jobs[now_pipeline_index].plan[1].config.image_resource.source)" :key="source" style="margin-right:15px;">{{source}} : {{pipeline_jobs[now_pipeline_index].plan[1].config.image_resource.source[source]}}</b-badge>
+					<b-badge variant="success" v-if="job_backup.plan[1].config.image_resource.type" style="margin-right:15px;">type : {{job_backup.plan[1].config.image_resource.type}}</b-badge>
+					<b-badge variant="success" v-for="source in Object.keys(job_backup.plan[1].config.image_resource.source)" :key="source" style="margin-right:15px;">{{source}} : {{job_backup.plan[1].config.image_resource.source[source]}}</b-badge>
 				</h3>
 				<h2>Run</h2>
 					<b-form-textarea
 					id="textarea"
-					v-model="pipeline_jobs[now_pipeline_index].plan[1].config.run.args"
+					v-model="job_backup.plan[1].config.run.args"
 					rows="7"
 					disabled
 					></b-form-textarea>
 				</div>
 				<h2>Resources</h2>
-				<h3 v-for="(item, index) in pipeline_jobs[now_pipeline_index].plan" :key="item.get">
+				<h3 v-for="(item, index) in job_backup.plan" :key="item.get">
 					<b-badge v-if="index!=0 && index!=1" variant="success"  style="margin-right:15px;">{{item.put}}</b-badge>
 				</h3>
 			</div>
-			<div v-else v-for="item in pipeline_jobs[now_pipeline_index]">
+			<div v-else v-for="item in job_backup">
 				<h1>{{item.name}}</h1>
 				<h3>Aggregate</h3>
 				<h4>
-					<b-badge variant="success" v-for="item in item.plan[0].aggregate" :key="item.get" style="margin-right:15px;">{{item.get}} : {{item.resource}}</b-badge>
+					<div v-for="item in item.plan[0].aggregate" :key="item.get">
+						<b-badge variant="success" style="margin-right:15px;">{{item.get}} : {{item.resource}}</b-badge>
+						<b-form-checkbox v-if="item.passed!=null" v-model="item.passed" name="check-button" switch>
+							<b>Passed: {{ item.passed!=null? item.passed: 'false'}}</b>
+						</b-form-checkbox>
+						<b-form-checkbox v-model="item.trigger" name="check-button" switch>
+							<b>Trigger: {{ item.trigger!=null? item.trigger : 'false'}}</b>
+						</b-form-checkbox>
+					</div>
 				</h4>
 				<div v-if="item.plan.length>1">
 				<h3>Image resource</h3>
@@ -99,7 +116,7 @@
 				</h4>
 			</div>
 			
-
+			<b-button class="mt-2" variant="outline-success" block @click="job_save(now_pipeline_index)">SAVE</b-button>
 		</b-modal>
 		<!-- job info 다이얼로그 끝 -->
 
@@ -130,7 +147,7 @@
 						<b-form-checkbox v-model="passed_check_double[index][index2]" name="check-button" switch>
 								<b>Passed: {{ passed_check_double[index][index2]? passed_check_double[index][index2]:'false' }}</b>
 						</b-form-checkbox>
-							<b-form-checkbox v-model="trigger_check_double[index][index2]" name="check-button" switch>
+						<b-form-checkbox v-model="trigger_check_double[index][index2]" name="check-button" switch>
 								<b>Trigger: {{ trigger_check_double[index][index2]? trigger_check_double[index][index2]:'false' }}</b>
 						</b-form-checkbox>
 					</div>
@@ -150,7 +167,6 @@
 			<b-button class="mt-2" variant="outline-success" block @click="save_pass(passed_index)">SAVE</b-button>
 		</b-modal>
 		<!-- link 다이얼로그 끝-->
-		{{passed_pipeline}}
 	</div>
 </template>
 
@@ -269,6 +285,15 @@ export default {
 		}	
 	},
 	job_change(e){
+		//기존의 passed와 trigger을 끊어주는 부분
+		this.remove_resource_link(e.newIndex);
+		this.remove_resource_link(e.newIndex+1);
+		if(e.oldIndex>e.newIndex)
+			this.remove_resource_link(e.oldIndex+1);
+
+		else
+			this.remove_resource_link(e.oldIndex);
+			
 		this.all_passed_reset();
 		this.drag=false;
 	},
@@ -290,13 +315,101 @@ export default {
 		else{
 			this.passed_pipeline[index] = this.pipeline_passed_check(index);
 		}
-		this.remove_resource_link(index);
+		
 		
 	},
 	showInfo(index){
 		this.now_pipeline_index=index
+		if(this.pipeline_jobs[this.now_pipeline_index].plan){
+			var rsc_data = this.pipeline_jobs[this.now_pipeline_index].plan[0].aggregate;
+			for(let i=0; i<rsc_data.length;i++){
+				//이미 패스드 값이 존재하는지 확인
+				if(typeof(rsc_data[i].passed)=='object'&&rsc_data[i].passed.length>0){
+					rsc_data[i].passed=true
+					continue;
+				}
+				delete rsc_data[i]['passed']
+				//앞의 패스드와 연결되는지를 체크
+				if(this.passed_pipeline[index]){
+					for(let j=0;j<this.passed_pipeline[index].length;j++){
+						if(i===this.passed_pipeline[index][j]){
+							rsc_data[i]['passed']=false
+							break;
+						}
+					}
+				}
+			}
+		}else{
+			for(let k=0;k<this.pipeline_jobs[this.now_pipeline_index].length;k++){
+				var rsc_data = this.pipeline_jobs[this.now_pipeline_index][k].plan[0].aggregate;
+				for(let i=0; i<rsc_data.length;i++){
+					//패스드가 있으면 passed로
+					if(typeof(rsc_data[i].passed)=='object'&&rsc_data[i].passed.length>0){
+						rsc_data[i].passed=true
+						continue;
+					}
+					delete rsc_data[i]['passed']
+					//패스드가 없지만 인덱스넘버가 겹치면 nonpassed로
+					if(this.passed_pipeline[index].length){
+						for(let j=0;j<this.passed_pipeline[index].length;j++){
+							if(i==this.passed_pipeline[index][j]){
+								rsc_data[i]['passed']=false
+								break;
+							}
+						}
+					}
+
+				}
+			}
+		}
+		
 		this.job_backup=JSON.parse(JSON.stringify(this.pipeline_jobs[this.now_pipeline_index]));
 		this.pipeline_info_dialog=true
+	},
+	job_save(index){
+		if(this.job_backup.plan){
+			var rsc_data = this.job_backup.plan[0].aggregate;
+			for(let i=0; i<rsc_data.length;i++){
+				//이미 패스드가 트루라면 앞의것과 연결
+				if(rsc_data[i].passed != null&&rsc_data[i].passed==true){
+						if(this.pipeline_jobs[index-1].name){
+							rsc_data[i].passed=[this.pipeline_jobs[index-1].name]
+							console.log(this.pipeline_jobs[index-1].name)
+						}else{
+							rsc_data[i].passed=['close']
+						}
+					continue;
+				}
+				//패스드가 펄스라면 패스드자체를 지워준다
+				else if(rsc_data[i].passed != null &&rsc_data[i].passed==false){
+					delete rsc_data[i]['passed']
+					continue;
+				}
+			}
+		}else{
+			for(let k=0;k<this.job_backup.length;k++){
+				var rsc_data = this.job_backup[k].plan[0].aggregate;
+				for(let i=0; i<rsc_data.length;i++){
+					//이미 패스드가 트루라면 앞의것과 연결
+					if(rsc_data[i].passed&&rsc_data[i].passed==true){
+						if(this.pipeline_jobs[index-1].name){
+							rsc_data[i].passed=[this.pipeline_jobs[index-1].name]
+						}else{
+							rsc_data[i].passed=['close']
+						}
+						continue;
+					}
+					//패스드가 펄스라면 패스드자체를 지워준다
+					else if(rsc_data[i].passed&&rsc_data[i].passed==false){
+						delete rsc_data[i]['passed']
+						continue;
+					}
+				}
+			}
+		}
+
+		this.pipeline_jobs[index]=JSON.parse(JSON.stringify(this.job_backup));
+		this.pipeline_info_dialog=false
 	},
 	resource_info(index){
 		this.now_resource_index=index
@@ -488,6 +601,7 @@ export default {
 		this.passed_pipeline.splice(index,1)
 		this.pipeline_jobs.splice(index,1)
 		this.passed_reset(index)
+		this.remove_resource_link(index);
 	},
 	find_resource(job,resource_arr){
 		var resource=resource_arr
@@ -524,7 +638,8 @@ export default {
 		if(this.pipeline_jobs[index].name != null){
 			for(let i=0;i<this.pipeline_jobs[index].plan[0].aggregate.length;i++){
 				if(this.pipeline_jobs[index].plan[0].aggregate[i].passed!=null){
-					this.pipeline_jobs[index].plan[0].aggregate[i]['passed'] = []
+					delete this.pipeline_jobs[index].plan[0].aggregate[i]['passed']					
+
 				}
 				if(this.pipeline_jobs[index].plan[0].aggregate[i].trigger!=null){
 					this.pipeline_jobs[index].plan[0].aggregate[i]['trigger'] = false
@@ -535,7 +650,7 @@ export default {
 			for(let j=0;j<this.pipeline_jobs[index].length;j++){
 				for(let i=0;i<this.pipeline_jobs[index][j].plan[0].aggregate.length;i++){
 					if(this.pipeline_jobs[index][j].plan[0].aggregate[i].passed!=null){
-						this.pipeline_jobs[index][j].plan[0].aggregate[i]['passed'] = []
+						delete this.pipeline_jobs[index][j].plan[0].aggregate[i]['passed']
 					}
 					if(this.pipeline_jobs[index][j].plan[0].aggregate[i].trigger!=null){
 						this.pipeline_jobs[index][j].plan[0].aggregate[i]['trigger'] = false
@@ -585,12 +700,6 @@ export default {
 			})
 		}
 
-		//링크라고 표시버튼 지워주는부분
-		if(typeof(this.passed_pipeline[index][0])=='number'){
-			this.passed_pipeline[index]='not'
-		}else{
-			this.passed_pipeline[index]=['not','not']
-		}
 		this.link_dialog=false;
 		this.passed_check=[]
 		this.trigger_check=[]
