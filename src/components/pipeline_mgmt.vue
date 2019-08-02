@@ -56,7 +56,7 @@
 						<b-badge variant="success"  style="margin-right:15px;">{{item.get}} : {{item.resource}}</b-badge>
 						<br>
 						<b-form-checkbox v-if="item.passed!=null" v-model="item.passed" name="check-button" switch>
-							<b>Passed: {{ item.passed!=null? item.passed: 'false'}} {{item.passed}}</b>
+							<b>Passed: {{ item.passed!=null? item.passed: 'false'}}</b>
 						</b-form-checkbox>
 						<b-form-checkbox v-model="item.trigger" name="check-button" switch>
 							<b>Trigger: {{ item.trigger!=null? item.trigger : 'false'}}</b>
@@ -229,6 +229,7 @@ export default {
 
 	//add부분에서 넘어온 데이터가 있는지 체크 
 	if(this.$route.params.add_data){
+		
 		var add_data = this.$route.params.add_data
 		//resource 중복검사 부분
 		for(let i=add_data.resources.length-1;i>=0;i--){
@@ -239,20 +240,26 @@ export default {
 				}	
 			}
 		}
-		if(typeof(add_data.job[0])=='object'){
-			var front_name=''
-			if(typeof(this.pipeline_jobs[this.pipeline_jobs.length-1])=='object')
-				front_name='cloes'
-			else
-				front_name=this.pipeline_jobs[this.pipeline_jobs.length-1].name
-			for(let i=0;i<add_data.job.length;i++){
-				for(let j=0;j<add_data.job[i].plan[0].aggregate.length;j++){
-					if(add_data.job[i].plan[0].aggregate[j].get=='repo'){
-						add_data.job[i].plan[0].aggregate[j]['passed'] = [front_name]
-					}
-				}
-			}
-		}
+		
+		// if(typeof(add_data.job[0])=='object'){
+		// 	var front_name=''
+		// 	if(typeof(this.pipeline_jobs[this.pipeline_jobs.length-1])=='object')
+		// 		front_name='cloes'
+		// 	else
+		// 		front_name=this.pipeline_jobs[this.pipeline_jobs.length-1].name
+			
+			
+		// 	for(let i=0;i<add_data.job.length;i++){
+		// 		console.log('1111111')
+		// 		for(let j=0;j<add_data.job[i].plan[0].aggregate.length;j++){
+		// 			console.log('222222222')
+		// 			if(add_data.job[i].plan[0].aggregate[j].get=='repo'){
+		// 				console.log('33333333')
+		// 				add_data.job[i].plan[0].aggregate[j]['passed'] = [front_name]
+		// 			}
+		// 		}
+		// 	}
+		// }
 		//job과 리소스추가부분
 		this.pipeline_jobs.push(add_data.job);
 		for(let i=0;i<add_data.resources.length;i++){
@@ -320,8 +327,9 @@ export default {
 	},
 	showInfo(index){
 		this.now_pipeline_index=index
-		if(this.pipeline_jobs[this.now_pipeline_index].plan){
-			var rsc_data = this.pipeline_jobs[this.now_pipeline_index].plan[0].aggregate;
+		this.job_backup=JSON.parse(JSON.stringify(this.pipeline_jobs[this.now_pipeline_index]));
+		if(this.job_backup.plan){
+			var rsc_data = this.job_backup.plan[0].aggregate;
 			for(let i=0; i<rsc_data.length;i++){
 				//이미 패스드 값이 존재하는지 확인
 				if(typeof(rsc_data[i].passed)=='object'&&rsc_data[i].passed.length>0){
@@ -340,8 +348,8 @@ export default {
 				}
 			}
 		}else{
-			for(let k=0;k<this.pipeline_jobs[this.now_pipeline_index].length;k++){
-				var rsc_data = this.pipeline_jobs[this.now_pipeline_index][k].plan[0].aggregate;
+			for(let k=0;k<this.job_backup.length;k++){
+				var rsc_data = this.job_backup[k].plan[0].aggregate;
 				for(let i=0; i<rsc_data.length;i++){
 					//패스드가 있으면 passed로
 					if(typeof(rsc_data[i].passed)=='object'&&rsc_data[i].passed.length>0){
@@ -363,7 +371,7 @@ export default {
 			}
 		}
 		
-		this.job_backup=JSON.parse(JSON.stringify(this.pipeline_jobs[this.now_pipeline_index]));
+		
 		this.pipeline_info_dialog=true
 	},
 	job_save(index){
