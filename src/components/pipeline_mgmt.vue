@@ -5,8 +5,17 @@
 		<h1>
 			RESOURCES
 		</h1>
-		<h2>
+		<h2 style="display:inline-block;">
 			<b-badge variant="success" class="resourcePosition" v-for="(item, index) in pipeline_resources" :key="index" style="cursor:pointer;" :item="item" @click="resource_info(index)">{{item.name}}</b-badge>
+		</h2>
+		<br>
+		<h1>
+			ADD RESOURCES
+		</h1>
+		<h2>
+			<b-badge variant="primary" class="resourcePosition" v-for="(item, index) in add_resources" :key="index" style="cursor:pointer;" :item="item" @click="resource_info(index)">{{item.name}}</b-badge>
+			<b-badge variant="primary" class="resourcePosition"  style="cursor:pointer;"  @click="add_resource">ADD RESOURCE +</b-badge>
+			<b-badge variant="danger" class="resourcePosition"  style="cursor:pointer;"  @click="add_resource_delete">ALL DELETE</b-badge>
 		</h2>
 		<!-- pipeline 부분 -->
 		<h1 class="topGrayLine"> 
@@ -186,6 +195,7 @@ export default {
 		pipeline_yml:'',
 		pipeline_jobs:'',
 		pipeline_resources:'',
+		add_resources:[],
 		pipeline_name:'',
 		load_pipeline_deck:[],
 		checkBox:[],
@@ -222,12 +232,13 @@ export default {
 		this.pipeline_yml=JSON.parse(localStorage.getItem("pipeline_json"));
 	}
 
+
 	this.pipeline_jobs=this.pipeline_yml.jobs
 	this.pipeline_resources=this.pipeline_yml.resources
 	//최초 세팅 정리
 	this.first_setting();
 
-	//add부분에서 넘어온 데이터가 있는지 체크 
+	//job add부분에서 넘어온 데이터가 있는지 체크 
 	if(this.$route.params.add_data){
 		
 		var add_data = this.$route.params.add_data
@@ -267,6 +278,17 @@ export default {
 		}
 
 	}
+
+	if(localStorage.getItem("add_resource_json")!== 'undefined')
+		this.add_resources=JSON.parse(localStorage.getItem("add_resource_json"));
+		
+	//resource add부분에서 넘어온 데이터가 있는지 체크 
+	if(this.$route.params.send_resource){
+		this.add_resources.push(this.$route.params.send_resource)
+		localStorage.setItem("add_resource_json", JSON.stringify(this.add_resources));
+	}
+
+
 	this.all_passed_reset();
   },
   methods: {
@@ -430,7 +452,7 @@ export default {
 	},
 	exportYml(){
 		this.now_pipeline_save();
-		var qq = this.pipeline_yml
+		var qq = JSON.parse(JSON.stringify(this.pipeline_yml));
 		var self = this
 		console.log("rrrrr")
 		(function () {
@@ -717,6 +739,14 @@ export default {
 	add_pipeline(){
 		this.now_pipeline_save();
 		this.$router.push({ name: 'add_pipeline'})
+	},
+	add_resource(){
+		this.now_pipeline_save();
+		this.$router.push({ name: 'add_resource'})
+	},
+	add_resource_delete(){
+		this.add_resources=[]
+		localStorage.setItem("add_resource_json", JSON.stringify(this.add_resources));
 	}
   }
 }
