@@ -4,7 +4,9 @@ import pipeline_input from './components/pipeline_input.vue'
 import pipeline_mgmt from './components/pipeline_mgmt.vue'
 import export_pipeline from './components/export_pipeline.vue'
 import add_pipeline from './components/add_pipeline.vue'
+import add_resource from './components/add_resource.vue'
 import show_pipeline from './components/show_pipeline.vue'
+
 
 Vue.use(Router)
 
@@ -31,6 +33,11 @@ export default new Router({
       path: '/add_pipeline',
       name: 'add_pipeline',
       component: add_pipeline
+    },
+    {
+      path: '/add_resource',
+      name: 'add_resource',
+      component: add_resource
     },
     {
       path: '/show_pipeline',

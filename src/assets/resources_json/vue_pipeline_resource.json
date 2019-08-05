@@ -1,0 +1,71 @@
+[
+    {
+        "name": "repo",
+        "type": "git",
+        "source": {
+            "uri": "((repo_uri_temp))",
+            "branch": "((repo_branch_temp))",
+            "private_key": "((git_private_key))"
+        },
+        "check_every": "10s",
+        "params":["repository"]
+    },
+    {
+        "name": "fail_api",
+        "type": "http-api",
+        "source": {
+            "uri": "((fail_callback_uri_temp))&job=deploy-develop",
+            "method": "POST"
+        },
+        "check_every": "10s"
+    },
+    {
+        "name": "success_api",
+        "type": "http-api",
+        "source": {
+            "uri": "((success_callback_uri_temp))&job=deploy-develop",
+            "method": "POST"
+        },
+        "check_every": "10s"
+    },
+    {
+        "name": "cf_api",
+        "type": "cf",
+        "source": {
+            "api": "((cf_api_temp))",
+            "username": "((cf_username))",
+            "password": "((cf_password))",
+            "organization": "((cf_org_temp))",
+            "space": "((cf_space_temp))",
+            "skip_cert_check": true,
+            "check_every": "10s"
+        },
+        "params":["manifest","current_app_name"]
+    },
+    {
+        "name": "docker_registry",
+        "type": "docker-image",
+        "source": {
+            "repository": "((docker_harbor_repo))/((image_project_temp))/((wrapper_group_name))-((wrapper_project_code_lower))",
+            "tag": "((ticket_version))",
+            "insecure_registries": "((insecure_registries))",
+            "username": "((docker_harbor_username))",
+            "password": "((docker_harbor_password))",
+            "check_every": "10s"
+        },
+        "params":["build"]
+    },
+    {
+        "name": "cf-delete",
+        "type": "cf-cli-resource",
+        "source": {
+            "api": "((cf_api_temp))",
+            "username": "((cf_username))",
+            "password": "((cf_password))",
+            "org": "((cf_org_temp))",
+            "space": "((cf_space_temp))",
+            "cf_dial_timeout": 10
+        },
+        "params":["command","app_name","delete_mapped_routes"]
+    }
+]
