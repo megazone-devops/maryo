@@ -56,7 +56,7 @@
 		<!-- 버튼부분 -->
 		<button type="button" class="btn btn-primary" @click="exportYml" style="float:right;">export data</button>
 		<!-- job info 다이얼로그 -->
-		<b-modal v-model="pipeline_info_dialog" title="Job" hide-footer>
+		<b-modal v-model="pipeline_info_dialog" id="pipeline_info_dialog" title="Job" hide-footer>
 			<div v-if="job_backup.name != null">
 				<h1>{{job_backup.name}}</h1>
 				<h2>Aggregate</h2>
@@ -87,9 +87,22 @@
 					></b-form-textarea>
 				</div>
 				<h2>Resources</h2>
-				<h3 v-for="(item, index) in job_backup.plan" :key="item.get">
-					<b-badge v-if="index!=0 && index!=1" variant="success"  style="margin-right:15px;">{{item.put}}</b-badge>
-				</h3>
+				<draggable
+						class="dragArea list-group"
+						:list="job_backup.plan"
+						group="resources"
+					>
+					<h3 v-for="(item, index) in job_backup.plan" :key="item.get">
+						<div v-if="index>1">
+							<b-badge  variant="success"  style="margin-right:15px;">{{item.put}}</b-badge>
+							<div v-if="item.params">
+								<div v-for="item2 in Object.keys(item.params)" style="width:100%;">
+									<h6><b-row><b-col sm="5">{{item2}} : </b-col><b-col sm="7"><b-form-input v-model="item.params[item2]" style="height:20px;"></b-form-input></b-col></b-row></h6>
+								</div>				
+							</div>
+						</div>
+					</h3>
+				</draggable>
 			</div>
 			<div v-else v-for="item in job_backup">
 				<h1>{{item.name}}</h1>
@@ -121,14 +134,40 @@
 				</div>
 				<h3>Resources</h3>
 				<h4 v-for="(item, index) in item.plan" :key="item.get">
-					<b-badge v-if="index!=0 && index!=1" variant="success"  style="margin-right:15px;">{{item.put}}</b-badge>
+					<div v-if="index>1">
+						<b-badge  variant="success"  style="margin-right:15px;">{{item.put}}</b-badge>
+						<div v-if="item.params">
+							<div v-for="item2 in Object.keys(item.params)" style="width:100%;">
+								<h6><b-row><b-col sm="4">{{item2}} : </b-col><b-col sm="8"><b-form-input v-model="item.params[item2]" style="height:20px;"></b-form-input></b-col></b-row></h6>
+							</div>				
+						</div>
+					</div>
 				</h4>
 			</div>
 			
 			<b-button class="mt-2" variant="outline-success" block @click="job_save(now_pipeline_index)">SAVE</b-button>
 		</b-modal>
 		<!-- job info 다이얼로그 끝 -->
-
+		<b-toast id="add_resource" title="BootstrapVue" static no-auto-hide style="position:absolute;top:20%;">
+			<div class="toast-body">
+				<draggable
+						class="dragArea list-group"
+						:list="job_backup.plan"
+						group="resources"
+					>
+					<button v-for="(item, index) in job_backup.plan" :key="item.get">
+						<div v-if="index>1">
+							<b-badge  variant="success"  style="margin-right:15px;">{{item.put}}</b-badge>
+							<div v-if="item.params">
+								<div v-for="item2 in Object.keys(item.params)" style="width:100%;">
+									<h6><b-row><b-col sm="5">{{item2}} : </b-col><b-col sm="7"><b-form-input v-model="item.params[item2]" style="height:20px;"></b-form-input></b-col></b-row></h6>
+								</div>				
+							</div>
+						</div>
+					</button>
+				</draggable>
+			</div>
+		</b-toast>
 		<!-- resource info 다이얼로그 -->
 		<b-modal v-model="resource_info_dialog" title="Resource" hide-footer>
 			<div v-for="item in Object.keys(resource_backup)">
@@ -145,37 +184,6 @@
 			<b-button class="mt-2" variant="outline-success" block @click="change_resource()">SAVE</b-button>
 		</b-modal>
 		<!-- resource info 다이얼로그 끝-->
-
-		<!-- link 다이얼로그 -->
-		<b-modal v-model="link_dialog" title="Link" hide-footer>
-			<div v-for="(item,index) in passed_pipeline[passed_index]" :key="index">
-				<div v-if="typeof(item)=='object'">
-					<h2>{{pipeline_jobs[passed_index][index].name}}</h2>
-					<div v-for="(item2, index2) in item" :key="index2">
-						<br><h5>{{pipeline_jobs[passed_index][index].plan[0].aggregate[item2].resource}}</h5>
-						<b-form-checkbox v-model="passed_check_double[index][index2]" name="check-button" switch>
-								<b>Passed: {{ passed_check_double[index][index2]? passed_check_double[index][index2]:'false' }}</b>
-						</b-form-checkbox>
-						<b-form-checkbox v-model="trigger_check_double[index][index2]" name="check-button" switch>
-								<b>Trigger: {{ trigger_check_double[index][index2]? trigger_check_double[index][index2]:'false' }}</b>
-						</b-form-checkbox>
-					</div>
-				</div>
-				<div v-else-if="typeof(item)=='number'">
-					<h2 v-if="index==0">{{pipeline_jobs[passed_index].name}}</h2>
-					<br><h5>{{pipeline_jobs[passed_index].plan[0].aggregate[item].resource}}</h5>
-					<b-form-checkbox v-model="passed_check[index]" name="check-button" switch>
-						<b>Passed: {{ passed_check[index]? passed_check[index]:'false' }}</b>
-					</b-form-checkbox>
-					<b-form-checkbox v-model="trigger_check[index]" name="check-button" switch>
-						<b>Trigger: {{ trigger_check[index]? trigger_check[index]:'false' }}</b>
-					</b-form-checkbox>
-				</div>
-			</div>
-			<!-- <b-button class="mt-3" block @click="$bvModal.hide('bv-modal-example')">Close Me</b-button> -->
-			<b-button class="mt-2" variant="outline-success" block @click="save_pass(passed_index)">SAVE</b-button>
-		</b-modal>
-		<!-- link 다이얼로그 끝-->
 	</div>
 </template>
 
@@ -223,6 +231,12 @@ export default {
 		// }
 		
 	  },
+	  pipeline_info_dialog(){
+			if(this.pipeline_info_dialog==true)
+				this.$bvToast.show('add_resource');
+			else
+				this.$bvToast.hide('add_resource');
+	  }
   },
   created(){
 	if(this.$route.params.pipeline_yml){
@@ -773,6 +787,9 @@ export default {
 }
 .addBoxSize{
 	width:100px;height:100px;border:1px solid black; margin-left:20px;float:left;text-align:center;cursor:pointer
+}
+.b-toast{
+	z-index:9999 !important;
 }
 .ghost {
   opacity: 0.5;
