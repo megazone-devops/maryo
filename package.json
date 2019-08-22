@@ -13,6 +13,7 @@
     "json2yaml": "^1.1.0",
     "vue": "^2.6.10",
     "vue-router": "^3.0.3",
+    "vue-window-modal": "git+https://github.com/ropbla9/vue-window-modal.git",
     "vuedraggable": "^2.23.0",
     "vuex": "^3.0.1"
   },

@@ -2,6 +2,7 @@
 	<div>
     <!-- 박스 그려주는 부분 -->
 		<!-- resource 부분 -->
+		<div>
 		<h1>
 			RESOURCES
 		</h1>
@@ -13,7 +14,7 @@
 			ADD RESOURCES
 		</h1>
 		<h2>
-			<b-badge variant="primary" class="resourcePosition" v-for="(item, index) in add_resources" :key="index" style="cursor:pointer;" :item="item" @click="resource_info(index)">{{item.name}}</b-badge>
+			<b-badge variant="primary" class="resourcePosition" v-for="(item, index) in add_resources" :key="index" style="cursor:pointer;" :item="item" @click="add_resource_info(index)">{{item.name}}</b-badge>
 			<b-badge variant="primary" class="resourcePosition"  style="cursor:pointer;"  @click="add_resource">ADD RESOURCE +</b-badge>
 			<b-badge variant="danger" class="resourcePosition"  style="cursor:pointer;"  @click="add_resource_delete">ALL DELETE</b-badge>
 		</h2>
@@ -53,24 +54,35 @@
 		<div class="addBoxSize" @click="add_pipeline">
 			<br><br>+
 		</div>
+
+
+		</div>
+		
 		<!-- 버튼부분 -->
 		<button type="button" class="btn btn-primary" @click="exportYml" style="float:right;">export data</button>
 		<!-- job info 다이얼로그 -->
-		<b-modal v-model="pipeline_info_dialog" id="pipeline_info_dialog" title="Job" hide-footer>
-			<div v-if="job_backup.name != null">
+		<vue-window-modal  :active="pipeline_info_dialog"  title="Job" style="left:40%;top:10%;overflow-y:auto;overflow-x:hidden;" v-on:clickClose="pipeline_info_dialog=false">
+    			<div v-if="job_backup.name != null">
 				<h1>{{job_backup.name}}</h1>
 				<h2>Aggregate</h2>
 				<h3>
-					<div v-for="item in job_backup.plan[0].aggregate" :key="item.get">
-						<b-badge variant="success"  style="margin-right:15px;">{{item.get}} : {{item.resource}}</b-badge>
-						<br>
-						<b-form-checkbox v-if="item.passed!=null" v-model="item.passed" name="check-button" switch>
-							<b>Passed: {{ item.passed!=null? item.passed: 'false'}}</b>
-						</b-form-checkbox>
-						<b-form-checkbox v-model="item.trigger" name="check-button" switch>
-							<b>Trigger: {{ item.trigger!=null? item.trigger : 'false'}}</b>
-						</b-form-checkbox>
-					</div>
+					<draggable
+						class="dragArea list-group"
+						:list="job_backup.plan[0].aggregate"
+						group="resources"
+						@change="aggregate_change"
+					>
+						<div v-for="item in job_backup.plan[0].aggregate" :key="item.get">
+							<b-badge variant="success"  style="margin-right:15px;">{{item.get? item.get:item.name}} : {{item.resource? item.resource:item.name}}</b-badge>
+							<br>
+							<b-form-checkbox v-if="item.passed!=null" v-model="item.passed" name="check-button" switch>
+								<b>Passed: {{ item.passed!=null? item.passed: 'false'}}</b>
+							</b-form-checkbox>
+							<b-form-checkbox v-model="item.trigger" name="check-button" switch>
+								<b>Trigger: {{ item.trigger!=null? item.trigger : 'false'}}</b>
+							</b-form-checkbox>
+						</div>
+					</draggable>
 				</h3>
 				<div v-if="job_backup.plan.length>1">
 				<h2>Image resource</h2>
@@ -91,13 +103,14 @@
 						class="dragArea list-group"
 						:list="job_backup.plan"
 						group="resources"
+						@change="put_change"
 					>
 					<h3 v-for="(item, index) in job_backup.plan" :key="item.get">
 						<div v-if="index>1">
-							<b-badge  variant="success"  style="margin-right:15px;">{{item.put}}</b-badge>
+							<b-badge  variant="success"  style="margin-right:15px;">{{item.put? item.put:item.name}}</b-badge>
 							<div v-if="item.params">
 								<div v-for="item2 in Object.keys(item.params)" style="width:100%;">
-									<h6><b-row><b-col sm="5">{{item2}} : </b-col><b-col sm="7"><b-form-input v-model="item.params[item2]" style="height:20px;"></b-form-input></b-col></b-row></h6>
+									<br><h6><b-row><b-col sm="5" stlye="text-align:left;">{{item2}} : </b-col><b-col sm="7"><b-form-input v-model="item.params[item2]" style="height:20px;"></b-form-input></b-col></b-row></h6>
 								</div>				
 							</div>
 						</div>
@@ -146,28 +159,28 @@
 			</div>
 			
 			<b-button class="mt-2" variant="outline-success" block @click="job_save(now_pipeline_index)">SAVE</b-button>
-		</b-modal>
-		<!-- job info 다이얼로그 끝 -->
-		<b-toast id="add_resource" title="BootstrapVue" static no-auto-hide style="position:absolute;top:20%;">
-			<div class="toast-body">
-				<draggable
+		</vue-window-modal>
+		<vue-window-modal  :active="pipeline_info_dialog"  title="Client 2" style="left:10%;top:10%;width:300px;" v-on:clickClose="pipeline_info_dialog=false">
+    						<div class="toast-body">
+					<draggable
 						class="dragArea list-group"
-						:list="job_backup.plan"
-						group="resources"
+						:list="add_resources"
+						:group="{ name: 'resources', pull: 'clone', put: false }"
+						 @change="log"
 					>
-					<button v-for="(item, index) in job_backup.plan" :key="item.get">
-						<div v-if="index>1">
-							<b-badge  variant="success"  style="margin-right:15px;">{{item.put}}</b-badge>
-							<div v-if="item.params">
-								<div v-for="item2 in Object.keys(item.params)" style="width:100%;">
-									<h6><b-row><b-col sm="5">{{item2}} : </b-col><b-col sm="7"><b-form-input v-model="item.params[item2]" style="height:20px;"></b-form-input></b-col></b-row></h6>
-								</div>				
-							</div>
-						</div>
-					</button>
+						<b-badge variant="success"  v-for="(item, index) in add_resources" :key="item.name" style="margin-bottom:15px;">{{item.name}}</b-badge>
 				</draggable>
 			</div>
-		</b-toast>
+		</vue-window-modal>
+		{{pipeline_info_dialog}}
+		<!-- <b-toast id="add_resource2" title="Job" static no-auto-hide style="position:absolute;top:20%;left:30%">
+			
+		</b-toast> -->
+		<!-- job info 다이얼로그 끝 -->
+
+
+
+
 		<!-- resource info 다이얼로그 -->
 		<b-modal v-model="resource_info_dialog" title="Resource" hide-footer>
 			<div v-for="item in Object.keys(resource_backup)">
@@ -199,7 +212,7 @@ export default {
 		draggable,
 	},
   data() {
-    return {
+	return {
 		pipeline_yml:'',
 		pipeline_jobs:'',
 		pipeline_resources:'',
@@ -225,18 +238,15 @@ export default {
     }
   },
   watch:{
-	  pipeline_jobs(){
+		pipeline_jobs(){
 		// for(let i=0;i<this.pipeline_jobs.length;i++){
 		// 	console.log(typeof(this.pipeline_jobs[i][0]))
 		// }
-		
-	  },
-	  pipeline_info_dialog(){
-			if(this.pipeline_info_dialog==true)
-				this.$bvToast.show('add_resource');
-			else
-				this.$bvToast.hide('add_resource');
-	  }
+
+		},
+		now_aggregate(){
+			console.log(this.now_aggregate)
+		}
   },
   created(){
 	if(this.$route.params.pipeline_yml){
@@ -340,6 +350,35 @@ export default {
 		this.all_passed_reset();
 		this.drag=false;
 	},
+	aggregate_change(e){
+		//기존의 passed와 trigger을 끊어주는 부분
+		console.log(e)
+		//내용에 추가하는부분
+		if(e['added']){
+			var temp = {
+				'get': e['added']['element'].name,
+				'resource': e['added']['element'].name
+			}
+			this.job_backup.plan[0].aggregate[e['added'].newIndex] = temp
+			console.log(this.job_backup.plan[0].aggregate[e['added'].newIndex])
+		}
+
+		//기존의 리소스가 있는지 검사하는부분
+
+		//없다면 리소스 추가
+		this.all_passed_reset();
+	},
+	put_change(e){
+		console.log(e)
+		if(e['added']){
+			var temp = {
+				'put': e['added']['element'].name,
+				'resource': e['added']['element'].name,
+				'params': e['added']['element'].params
+			}
+			this.job_backup.plan[0].aggregate[e['added'].newIndex] = temp
+		}
+	},
 	all_passed_reset(){
 			for(let i=0;i<this.passed_pipeline.length;i++){
 				this.passed_reset(i);
@@ -361,6 +400,9 @@ export default {
 		
 		
 	},
+	log: function(evt) {
+      window.console.log(evt);
+    },
 	showInfo(index){
 		this.now_pipeline_index=index
 		this.job_backup=JSON.parse(JSON.stringify(this.pipeline_jobs[this.now_pipeline_index]));
@@ -414,6 +456,11 @@ export default {
 		if(this.job_backup.plan){
 			var rsc_data = this.job_backup.plan[0].aggregate;
 			for(let i=0; i<rsc_data.length;i++){
+				if(rsc_data[i]==null){
+					rsc_data.splice(i,1);
+					console.log("123123123")
+					continue;
+				}
 				//이미 패스드가 트루라면 앞의것과 연결
 				if(rsc_data[i].passed != null&&rsc_data[i].passed==true){
 						if(this.pipeline_jobs[index-1].name){
@@ -458,6 +505,11 @@ export default {
 	resource_info(index){
 		this.now_resource_index=index
 		this.resource_backup = JSON.parse(JSON.stringify(this.pipeline_resources[this.now_resource_index]));	
+		this.resource_info_dialog=true
+	},
+	add_resource_info(index){
+		this.now_resource_index=index
+		this.resource_backup = JSON.parse(JSON.stringify(this.add_resources[this.now_resource_index]));	
 		this.resource_info_dialog=true
 	},
 	change_resource(){
@@ -790,6 +842,9 @@ export default {
 }
 .b-toast{
 	z-index:9999 !important;
+}
+.add_list_pop{
+	width:200px;height:400px;background:red;z-index:9999 !important
 }
 .ghost {
   opacity: 0.5;

@@ -8,7 +8,9 @@
             "private_key": "((git_private_key))"
         },
         "check_every": "10s",
-        "params":["repository"]
+        "params":{
+            "repository":""
+        }
     },
     {
         "name": "fail_api",
@@ -40,7 +42,10 @@
             "skip_cert_check": true,
             "check_every": "10s"
         },
-        "params":["manifest","current_app_name"]
+        "params":{
+            "manifest":"",
+            "current_app_name":""
+        }
     },
     {
         "name": "docker_registry",
@@ -53,7 +58,9 @@
             "password": "((docker_harbor_password))",
             "check_every": "10s"
         },
-        "params":["build"]
+        "params":{
+            "build":""
+        }
     },
     {
         "name": "cf-delete",
@@ -66,6 +73,10 @@
             "space": "((cf_space_temp))",
             "cf_dial_timeout": 10
         },
-        "params":["command","app_name","delete_mapped_routes"]
+        "params":{
+            "command":"",
+            "app_name":"",
+            "delete_mapped_routes":""
+        }
     }
 ]
