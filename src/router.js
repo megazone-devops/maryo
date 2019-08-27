@@ -1,6 +1,7 @@
 import Vue from 'vue'
 import Router from 'vue-router'
 import pipeline_input from './components/pipeline_input.vue'
+import mgmt_main from './pages/mgmt_main.vue'
 import pipeline_mgmt from './components/pipeline_mgmt.vue'
 import export_pipeline from './components/export_pipeline.vue'
 import add_pipeline from './components/add_pipeline.vue'
@@ -18,6 +19,11 @@ export default new Router({
       path: '/',
       name: 'pipeline_input',
       component: pipeline_input
+    },
+    {
+      path: '/mgmt_main',
+      name: 'mgmt_main',
+      component: mgmt_main
     },
     {
       path: '/pipeline_mgmt',

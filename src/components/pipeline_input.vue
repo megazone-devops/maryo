@@ -16,7 +16,7 @@ export default {
   data() {
     return {
       files: [],
-      pipeline_yml:''
+      yml_json:''
     }
   },
   methods: {
@@ -28,9 +28,12 @@ export default {
       reader.onload = function () {
           
           var text = reader.result;
-          this.pipeline_yml=jsyaml.load(text)
-          self.$router.push({ name: 'pipeline_mgmt', params: { pipeline_yml: this.pipeline_yml }})
+          this.yml_json=jsyaml.load(text)
+          self.$router.push({ name: 'mgmt_main', params: { yml_json: this.yml_json }})
+                console.log("12313131")
+      console.log(this.yml_json)
       };
+
       reader.readAsText(input.files[0]);
       
     }
