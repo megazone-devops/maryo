@@ -1,8 +1,8 @@
 <template>
 	<div style="padding-top:15px;">
         <!-- 오브젝트면서 배열이 아닐경우는???? -->
-        <div v-for="(item,index) in Object.keys(yml_json)" :key=index>
-            <bind_box :data=yml_json[item] :title="Array.isArray(item)? '':item" :color_arr="[index%(color_set.length-1),0]"></bind_box>
+        <div v-for="(item,index) in Object.entries(yml_json)" :key=index>
+            <bind_box :data="item" :color_arr="[index%(color_set.length-1),0]" :title="typeof(item[0])=='string'? item[0]:''"></bind_box>
         </div>
 	</div>
 </template>
