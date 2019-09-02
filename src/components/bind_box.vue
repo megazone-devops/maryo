@@ -1,25 +1,30 @@
 <template>
 	<div class="box_style" :style="color">
 		
-		<div class="box_header">
-			<h2 v-if="title!=null" style="text-align:left;float:left;">{{title}}</h2>
+		<div class="box_header" v-if="title">
+			<h2 >{{title}}</h2>
 			<b-button v-if="title!='' || typeof(data)=='string'" variant="outline-primary" class="header_button" @click="flag=!flag">{{flag==true? '-':'+'}}</b-button>
 		</div>
-
 		<div v-if="flag==true">
-			<div v-if="typeof(data)=='object'">
-				<div v-for="item in Object.keys(data)">
-					<div v-if="typeof(data[item])=='object'">
-						<bind_box :data=data[item] :title="Array.isArray(data)? '':item" :color_arr="[color_arr[0],color_arr[1]+1]"></bind_box>
+			<div v-if="typeof(data[0])=='string'&&typeof(data[1])=='string'">
+				{{data[0]}} : {{data[1]}}
+			</div>
+			<div v-else-if="isNaN(data[0])==true && typeof(data[1])=='object'">
+				<bind_box v-for="(item, index) in Object.entries(data[1])" :key="index" :title="isNaN(data[0])==true? data[0]:''" :data=item :color_arr="[color_arr[0],color_arr[1]+1]"></bind_box>
+			</div>
+			<div v-else>
+				<div v-for="(item,index) in Object.entries(data[1])" :key="index">
+					<div v-if="typeof(item[1])=='object'">
+						<bind_box :data=[0,item[1]] :color_arr="[color_arr[0],color_arr[1]+1]" :title="isNaN(item[0])==true? item[0]:''"></bind_box>
+					</div>
+					<div v-else-if="isNaN(item[0])==false && typeof(item[1])=='string'">
+						{{item[1]}}
 					</div>
 					<div v-else>
-						<span v-if="!Array.isArray(data)">{{item}} : </span>{{data[item]}}
+						{{item[0]}} : {{item[1]}}
 					</div>
+						
 				</div>
-			</div>
-			
-			<div v-else>
-				{{title}} : {{data}}
 			</div>
 		</div>
 			
