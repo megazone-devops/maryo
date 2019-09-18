@@ -2,7 +2,7 @@
   <div>
     <section class="logo-container" role="logo">
       <i class="logo-image">
-        <img src="img/maryo-logo.png" alt="MARYO" style="width: 180px" />
+        <img src="img/maryo-logo.svg" alt="MARYO" style="width: 180px" />
       </i>
       <h3 class="logo-desc">
         Visualized YAML editor for pipeline
@@ -85,6 +85,9 @@ export default {
   margin: 4rem 0;
   display: flex;
   flex-direction: column;
+}
+.logo-image {
+  margin: 0.8rem 0;
 }
 .logo-desc {
   font-family: 'Overpass', sans-serif;
