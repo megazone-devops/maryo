@@ -7,5 +7,11 @@ pipeline {
       }
     }
 
+    stage('test') {
+      steps {
+        sh 'echo \'hellow world\''
+      }
+    }
+
   }
 }
